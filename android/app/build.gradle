@@ -1,0 +1,58 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.stockflow.stockflow"
+    compileSdkVersion 34  // Specify the latest stable SDK version here
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+
+    defaultConfig {
+        applicationId = "com.stockflow.stockflow"
+        minSdkVersion 23  // Updated from flutter.minSdkVersion to 23 to match firebase_auth requirements
+        targetSdkVersion 33  // Target the latest Android SDK version
+        versionCode flutter.versionCode  // Keep these values from Flutter's config
+        versionName flutter.versionName
+    }
+
+    buildTypes {
+        release {
+            // Enable minification for release builds (optional but recommended for production)
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // Update this section with your release signing configuration for production builds
+            signingConfig signingConfigs.debug  // Replace 'debug' with your actual release signing config if you have one
+        }
+    }
+    
+    // Add your signing configs if necessary (e.g., for release builds)
+    signingConfigs {
+        debug {
+            // Debug signing config (default)
+        }
+        // release {
+        //     keyAlias 'your-key-alias'
+        //     keyPassword 'your-key-password'
+        //     storeFile file('path/to/your/keystore.jks')
+        //     storePassword 'your-store-password'
+        // }
+    }
+}
+
+
+flutter {
+    source = "../.."
+}
