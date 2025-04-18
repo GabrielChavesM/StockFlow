@@ -1,9 +1,9 @@
 // ignore_for_file: library_private_types_in_public_api, deprecated_member_use
 
 // TODO
-// Melhorar o Price Range para funcionar com virgulas
-// Mudanças no Price Range e no Min/Max Price têm que aparecer cada um no seu suscessivamente
-// Ao tocar fora do teclado ele tem que sair
+// ( + ) Melhorar o Price Range para funcionar com vírgulas
+// ( + ) Mudanças no Price Range e no Min/Max Price têm que aparecer cada um no seu sucessivamente
+// ( + ) Melhorar o filtro de produtos para não ficar tão lento
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -11,6 +11,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/decimal_input.dart';
 import 'package:stockflow/components/filter_form.dart';
+import '../components/product_details.dart';
 import '../domain/stock_domain.dart';
 import '../data/stock_data.dart';
 
@@ -34,6 +35,9 @@ class _FilterPageState extends State<FilterPage> {
   bool _showPriceRange = false;
   final ProductService _productService = ProductService(ProductRepository());
 
+  bool _isUpdatingRange = false;
+  bool _isUpdatingTextFields = false;
+
   @override
   void initState() {
     super.initState();
@@ -54,52 +58,59 @@ class _FilterPageState extends State<FilterPage> {
     }
   }
 
-  Stream<List<DocumentSnapshot>> _filteredProductsStream() {
-    return _productService.getProductsStream().map((snapshot) {
-      final name = _nameController.text.toLowerCase();
-      final brand = _brandController.text.toLowerCase();
-      final category = _categoryController.text.toLowerCase();
-      final storeNumber = _storeNumber?.toLowerCase() ?? '';
+Stream<List<DocumentSnapshot>> _filteredProductsStream() {
+  final storeNumber = _storeNumber?.toLowerCase() ?? '';
 
-      double minPrice = _priceRange.start;
-      double maxPrice = _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
+  final name = _nameController.text.toLowerCase();
+  final brand = _brandController.text.toLowerCase();
+  final category = _categoryController.text.toLowerCase();
 
-      if (_minPriceController.text.isNotEmpty) {
-        minPrice = double.tryParse(_minPriceController.text) ?? minPrice;
-      }
+  double minPrice = _priceRange.start;
+  double maxPrice = _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
 
-      if (_maxPriceController.text.isNotEmpty) {
-        maxPrice = double.tryParse(_maxPriceController.text) ?? maxPrice;
-      }
+  if (_minPriceController.text.isNotEmpty) {
+    final cleanMin = _minPriceController.text.replaceAll(',', '.');
+    minPrice = double.tryParse(cleanMin) ?? minPrice;
+  }
 
-      return snapshot.docs.where((product) {
-        final data = product.data() as Map<String, dynamic>;
-        final productName = (data['name'] ?? "").toString().toLowerCase();
-        final productBrand = (data['brand'] ?? "").toString().toLowerCase();
-        final productCategory = (data['category'] ?? "").toString().toLowerCase();
-        final productStoreNumber = (data['storeNumber'] ?? "").toString().toLowerCase();
-        final productPrice = (data['salePrice'] ?? 0.0) is int
-            ? (data['salePrice'] as int).toDouble()
-            : (data['salePrice'] ?? 0.0) as double;
+  if (_maxPriceController.text.isNotEmpty) {
+    final cleanMax = _maxPriceController.text.replaceAll(',', '.');
+    maxPrice = double.tryParse(cleanMax) ?? maxPrice;
+  }
 
-        if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
-          return false;
-        }
+  return _productService.getProductsStream(
+    storeNumber: storeNumber,
+    name: name.isEmpty ? null : name,
+    brand: brand.isEmpty ? null : brand,
+    category: category.isEmpty ? null : category,
+    minPrice: minPrice,
+    maxPrice: maxPrice,
+  ).map((snapshot) => snapshot.docs.take(5).toList());
+}
 
-        return productName.contains(name) &&
-            productBrand.contains(brand) &&
-            productCategory.contains(category) &&
-            productPrice >= minPrice &&
-            productPrice <= maxPrice;
-      }).toList().take(5).toList();
+
+  void _onPriceRangeChanged(RangeValues newRange) {
+    if (_isUpdatingTextFields) return;
+
+    setState(() {
+      _isUpdatingRange = true;
+      _priceRange = newRange;
+      _minPriceController.text = newRange.start.toStringAsFixed(2).replaceAll('.', ',');
+      _maxPriceController.text = newRange.end >= 5000 ? '' : newRange.end.toStringAsFixed(2).replaceAll('.', ',');
+      _isUpdatingRange = false;
     });
   }
 
-  void _onPriceRangeChanged(RangeValues newRange) {
+  void _onTextFieldChanged() {
+    if (_isUpdatingRange) return;
+
     setState(() {
-      _priceRange = newRange;
-      _minPriceController.text = newRange.start.round().toString();
-      _maxPriceController.text = newRange.end >= 5000 ? '' : newRange.end.round().toString();
+      _isUpdatingTextFields = true;
+      final min = double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? 0;
+      final max = double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ?? 5000;
+
+      _priceRange = RangeValues(min.clamp(0, 5000), max.clamp(0, 5000));
+      _isUpdatingTextFields = false;
     });
   }
 
@@ -169,7 +180,6 @@ class _FilterPageState extends State<FilterPage> {
                             onChanged: _onPriceRangeChanged,
                           ),
                           const SizedBox(height: 10),
-                          // Adicionando os campos de preço mínimo e máximo
                           Row(
                             children: [
                               Expanded(
@@ -188,7 +198,7 @@ class _FilterPageState extends State<FilterPage> {
                                       borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
-                                  onChanged: (_) => setState(() {}),
+                                  onChanged: (_) => _onTextFieldChanged(),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -208,7 +218,7 @@ class _FilterPageState extends State<FilterPage> {
                                       borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
-                                  onChanged: (_) => setState(() {}),
+                                  onChanged: (_) => _onTextFieldChanged(),
                                 ),
                               ),
                             ],
@@ -217,10 +227,9 @@ class _FilterPageState extends State<FilterPage> {
                       ),
                   ],
                 ),
-                onChanged: () => setState(() {}), // Chama setState do pai, ou seja, atualiza a tela
+                onChanged: () => setState(() {}),
               ),
             ),
-            // Espaço entre o filtro e a lista de produtos
             Expanded(
               child: StreamBuilder<List<DocumentSnapshot>>(
                 stream: _filteredProductsStream(),
@@ -246,17 +255,16 @@ class _FilterPageState extends State<FilterPage> {
                       final product = products[index];
                       final data = product.data() as Map<String, dynamic>;
 
-                      // Card dos produtos
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
-                        child: InkWell(  // Adicionando o InkWell para tornar o card clicável em toda a sua área
-                          onTap: () => _showProductDetailsDialog(context, data),
+                        child: InkWell(
+                          onTap: () => showProductDetailsDialog(context, data),
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1), // Fundo semitransparente
-                                borderRadius: BorderRadius.circular(12), // Bordas arredondadas
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color.fromARGB(30, 240, 250, 255).withOpacity(0.6),
@@ -266,12 +274,11 @@ class _FilterPageState extends State<FilterPage> {
                                 ],
                               ),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 0.01, sigmaY: 0.01), // Desfoque
+                                filter: ImageFilter.blur(sigmaX: 0.01, sigmaY: 0.01),
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Row(
                                     children: [
-                                      // Espaço reservado para o código de barras
                                       Container(
                                         margin: const EdgeInsets.all(4.0),
                                         width: 60,
@@ -282,7 +289,6 @@ class _FilterPageState extends State<FilterPage> {
                                         ),
                                       ),
                                       const SizedBox(width: 12),
-                                      // Informações principais (nome, marca, etc.)
                                       Expanded(
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,10 +304,9 @@ class _FilterPageState extends State<FilterPage> {
                                           ],
                                         ),
                                       ),
-                                      // Preço à direita, mas levemente centrado para a esquerda
                                       Container(
-                                        alignment: Alignment.centerRight,  // Alinha o preço à direita
-                                        padding: const EdgeInsets.only(left: 12), // Ajuste o padding para mover um pouco para a esquerda
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(left: 12),
                                         child: Text(
                                           "€ ${data['salePrice']?.toStringAsFixed(2) ?? "0.00"}  ",
                                           style: const TextStyle(
@@ -330,156 +335,7 @@ class _FilterPageState extends State<FilterPage> {
     );
   }
 
-// Mostra descrição do produto selecionado
-void _showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
-  final details = {
-    "Brand": data['brand'] ?? "Without brand",
-    "Model": data['model'] ?? "Without model",
-    "Category": data['category'] ?? "Without category",
-    "Subcategory": data['subCategory'] ?? "Without subcategory",
-    "Description": data['description'] ?? "Without description",
-    "Sale Price": "€ ${data['salePrice']?.toStringAsFixed(2) ?? "0.00"}",
-    "Current Stock": "${data['stockCurrent'] ?? 0}",
-    "Stock Order": "${data['stockOrder'] ?? 0}",
-  };
-
-  // Mapeando os ícones para cada campo
-  final Map<String, IconData> icons = {
-    "Brand": Icons.storefront,
-    "Model": Icons.device_hub,
-    "Category": Icons.category,
-    "Subcategory": Icons.subdirectory_arrow_right,
-    "Description": Icons.description,
-    "Sale Price": Icons.attach_money,
-    "Current Stock": Icons.inventory,
-    "Stock Order": Icons.shopping_cart,
-  };
-
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true, // Permite que o tamanho do bottom sheet seja ajustado conforme o conteúdo
-    backgroundColor: Colors.transparent, // Deixa o fundo transparente para o efeito de vidro
-    builder: (BuildContext context) {
-      return AnimatedContainer(
-        duration: Duration(milliseconds: 300), // Animação suave para a transição do modal
-        constraints: BoxConstraints(
-          maxHeight: (MediaQuery.of(context).size.height / 1.75),
-        ),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(16),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 10.0,
-              spreadRadius: 1.0,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Botão X para fechar
-            Padding(
-              padding: const EdgeInsets.only(top: 12.0, right: 12.0),
-              child: Align(
-                alignment: Alignment.topRight,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(
-                    Icons.close,
-                    size: 28,
-                    color: Colors.black87, // Ícone preto suave
-                  ),
-                ),
-              ),
-            ),
-            // Título do produto
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 0), // Melhor padding para o título
-              child: Text(
-                data['name'] ?? "No name",
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87, // Título em preto suave
-                ),
-              ),
-            ),
-            SizedBox(height: 8),
-            // Detalhes do produto
-            Expanded(
-              child: ListView(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                children: details.entries.map((entry) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.center, // Centraliza os campos
-                    children: [
-                      // Ícones e texto para cada campo
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center, // Alinha os itens no centro
-                        children: [
-                          Icon(
-                            icons[entry.key], // Ícone específico para o campo
-                            color: Colors.black54, // Ícone cinza
-                            size: 24.0, // Aumenta o tamanho do ícone
-                          ),
-                          const SizedBox(width: 12.0), // Espaçamento entre o ícone e o texto
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                style: TextStyle(
-                                  color: Colors.black87, // Texto principal
-                                  fontSize: 16.0,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: "${entry.key}: ",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black87, // Texto chave em negrito
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text: entry.value,
-                                    style: const TextStyle(
-                                      color: Colors.black54, // Texto de valor em cinza suave
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Divider(
-                        color: Colors.black26, // Linha divisória suave
-                        thickness: 0.5,
-                        indent: 20, // Indentação para centralizar a linha
-                        endIndent: 20, // Indentação para centralizar a linha
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-
-
-
-
-Color hexStringToColor(String hex) {
+  Color hexStringToColor(String hex) {
     hex = hex.replaceAll('#', '');
     if (hex.length == 6) hex = 'FF$hex';
     return Color(int.parse('0x$hex'));

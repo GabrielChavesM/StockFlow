@@ -16,12 +16,19 @@ class DecimalInputFormatter extends TextInputFormatter {
       return newValue;
     }
 
-    final regex = RegExp(r'^\d*\.?\d{0,2}$');
+    // Substitui vírgulas por pontos
+    String formattedText = newText.replaceAll(',', '.');
 
-    if (regex.hasMatch(newText)) {
-      return newValue;
+    // Regex para validar números com até 'decimalRange' casas decimais
+    final regex = RegExp(r'^\d*\.?\d{0,' + decimalRange.toString() + r'}$');
+
+    // Verifica se o texto formatado é válido
+    if (regex.hasMatch(formattedText)) {
+      // Retorna o novo valor com a vírgula substituída por ponto
+      return newValue.copyWith(text: formattedText);
     }
 
+    // Caso contrário, retorna o valor antigo
     return oldValue;
   }
 }
