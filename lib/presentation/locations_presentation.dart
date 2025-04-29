@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/filter_form.dart';
 
+import '../components/barcode_camera.dart';
+import '../components/product_cards.dart';
 import '../data/locations_data.dart';
 import '../domain/locations_domain.dart';
 
@@ -22,6 +24,9 @@ class _LocationsPageState extends State<LocationsPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
+  final TextEditingController _productIdController = TextEditingController(); // Add productId controller
+
+  bool _isProductIdVisible = false; // Controls the visibility of the productId field
 
   List<DocumentSnapshot> _allProducts = []; // Mantém todos os produtos
   String _storeNumber = '';
@@ -54,6 +59,7 @@ class _LocationsPageState extends State<LocationsPage> {
     final brand = _brandController.text.toLowerCase();
     final category = _categoryController.text.toLowerCase();
     final storeNumber = _storeNumber.toLowerCase();
+    final productId = _productIdController.text.trim(); // Get the productId
 
     return products
         .where((product) {
@@ -65,10 +71,15 @@ class _LocationsPageState extends State<LocationsPage> {
               (data['category'] ?? "").toString().toLowerCase();
           final productStoreNumber =
               (data['storeNumber'] ?? "").toString().toLowerCase();
+          final currentProductId = product.id;
 
-          if (storeNumber.isNotEmpty && productStoreNumber != storeNumber)
+          if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
             return false;
-          if (storeNumber.isEmpty) return false;
+          }
+
+          if (productId.isNotEmpty && currentProductId != productId) {
+            return false; // Filter by productId if provided
+          }
 
           return productName.contains(name) &&
               productBrand.contains(brand) &&
@@ -79,6 +90,13 @@ class _LocationsPageState extends State<LocationsPage> {
         .toList();
   }
 
+  void _onBarcodeScanned(String productId) {
+    setState(() {
+      _productIdController.text = productId; // Set the scanned productId
+      _isProductIdVisible = true; // Make the productId field visible
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -87,8 +105,7 @@ class _LocationsPageState extends State<LocationsPage> {
         title: Text('Locate Stock', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(
-            color: Colors.grey), // Muda a cor do botão de voltar para branco
+        iconTheme: IconThemeData(color: Colors.grey),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -103,22 +120,48 @@ class _LocationsPageState extends State<LocationsPage> {
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // Ajusta o alinhamento
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(height: kToolbarHeight * 2), // Espaço para a AppBar
+            SizedBox(height: kToolbarHeight * 2),
             Padding(
               padding: const EdgeInsets.all(16.0),
-              // Filter form
               child: GlassmorphicFilterForm(
                 nameController: _nameController,
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onChanged: () =>
-                    setState(() {}), // Faz o setState quando o texto muda
+                onProductIdScanned: _onBarcodeScanned, // Pass the callback
+                onChanged: () => setState(() {}),
               ),
             ),
+            if (_isProductIdVisible)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: TextField(
+                  controller: _productIdController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Product ID',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 2),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.white),
+                      onPressed: () {
+                        setState(() {
+                          _productIdController.clear();
+                          _isProductIdVisible = false;
+                        });
+                      },
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _productService.getProductsStream(),
@@ -139,9 +182,7 @@ class _LocationsPageState extends State<LocationsPage> {
                   final filteredProducts = _applyFilters(_allProducts);
 
                   return ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                        vertical:
-                            0), // Adicione um padding para evitar colar no topo
+                    padding: EdgeInsets.symmetric(vertical: 0),
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
@@ -149,17 +190,15 @@ class _LocationsPageState extends State<LocationsPage> {
                       final documentId = product.id;
 
                       return Card(
-                        margin:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         child: ListTile(
                           leading: Container(
                             margin: const EdgeInsets.all(4.0),
                             width: 60,
                             height: 60,
                             color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.qr_code,
-                                  size: 32, color: Colors.black45),
+                            child: BarcodeWidget(
+                              productId: data['productId'] ?? '',
                             ),
                           ),
                           title: Text(
@@ -177,12 +216,10 @@ class _LocationsPageState extends State<LocationsPage> {
                                   children: [
                                     TextSpan(
                                       text: "Current Stock: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: data['stockCurrent']?.toString() ??
-                                          "No stock.",
+                                      text: data['stockCurrent']?.toString() ?? "No stock.",
                                     ),
                                   ],
                                 ),
@@ -193,12 +230,10 @@ class _LocationsPageState extends State<LocationsPage> {
                                   children: [
                                     TextSpan(
                                       text: "Shop Location: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: data['productLocation'] ??
-                                          "Not located.",
+                                      text: data['productLocation'] ?? "Not located.",
                                     ),
                                   ],
                                 ),
@@ -207,8 +242,7 @@ class _LocationsPageState extends State<LocationsPage> {
                           ),
                           onTap: () {
                             final locationController = TextEditingController();
-                            _showEditLocationDialog(
-                                context, locationController, documentId);
+                            _showEditLocationDialog(context, locationController, documentId);
                           },
                         ),
                       );

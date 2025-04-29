@@ -3,6 +3,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 
+import 'barcode_camera.dart';
+
 class GlassmorphicFilterForm extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController brandController;
@@ -10,6 +12,7 @@ class GlassmorphicFilterForm extends StatelessWidget {
   final TextEditingController storeNumberController;
   final Widget? dropdownWidget;
   final VoidCallback? onChanged;
+  final ValueChanged<String>? onProductIdScanned; // New callback for productId
 
   const GlassmorphicFilterForm({
     Key? key,
@@ -19,6 +22,7 @@ class GlassmorphicFilterForm extends StatelessWidget {
     required this.storeNumberController,
     this.dropdownWidget,
     this.onChanged,
+    this.onProductIdScanned, // Initialize the callback
   }) : super(key: key);
 
   @override
@@ -51,10 +55,10 @@ class GlassmorphicFilterForm extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField(nameController, 'Name'),
-              _buildTextField(brandController, 'Brand'),
-              _buildTextField(categoryController, 'Category'),
-              _buildTextField(storeNumberController, 'Filter by store number', enabled: false),
+              _buildTextField(context, nameController, 'Name'),
+              _buildTextField(context, brandController, 'Brand'),
+              _buildTextField(context, categoryController, 'Category'),
+              _buildTextField(context, storeNumberController, 'Filter by store number', enabled: false),
               if (dropdownWidget != null) dropdownWidget!,
             ],
           ),
@@ -63,7 +67,7 @@ class GlassmorphicFilterForm extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, {bool enabled = true}) {
+  Widget _buildTextField(BuildContext context, TextEditingController controller, String label, {bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: TextField(
@@ -81,6 +85,26 @@ class GlassmorphicFilterForm extends StatelessWidget {
             borderSide: BorderSide(color: Colors.white, width: 2),
           ),
           contentPadding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 12.0),
+          suffixIcon: label == 'Name'
+              ? IconButton(
+                  icon: const Icon(Icons.camera_alt, color: Colors.white),
+                  onPressed: () {
+                    // Open the BarcodeScannerPage and handle the result via callback
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => BarcodeScannerWidget(
+                          onBarcodeScanned: (productId) {
+                            if (onProductIdScanned != null) {
+                              onProductIdScanned!(productId); // Pass the productId to the parent
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                )
+              : null,
         ),
       ),
     );

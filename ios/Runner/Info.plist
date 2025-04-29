@@ -27,6 +27,10 @@
 			<string>googlechrome</string>
 			<string>comgooglemaps</string>
 	</array>
+
+	<key>NSCameraUsageDescription</key>
+	<string>Este app precisa acessar a câmera para escanear códigos de barras.</string>
+
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

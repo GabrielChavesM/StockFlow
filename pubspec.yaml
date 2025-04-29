@@ -48,6 +48,9 @@ dependencies:
   firebase_auth_mocks: ^0.14.1
   mocktail: ^1.0.4
   provider: ^6.1.4
+  barcode: ^2.2.9
+  flutter_svg: ^2.1.0
+  mobile_scanner: ^6.0.10
 
 
 dev_dependencies:

@@ -1,3 +1,6 @@
+// TODO
+// PriceRange with vatPrice
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +11,8 @@ import '../components/product_cards.dart';
 import '../components/product_details.dart';
 import '../domain/stock_domain.dart';
 import '../data/stock_data.dart';
+
+// ... imports remain the same
 
 class FilterPage extends StatefulWidget {
   const FilterPage({super.key});
@@ -23,12 +28,14 @@ class _FilterPageState extends State<FilterPage> {
   final TextEditingController _storeNumberController = TextEditingController();
   final TextEditingController _minPriceController = TextEditingController();
   final TextEditingController _maxPriceController = TextEditingController();
+  final TextEditingController _productIdController = TextEditingController();
+  bool _isProductIdVisible = false;
 
   RangeValues _priceRange = RangeValues(0, 5000);
   String? _storeNumber;
   bool _showPriceRange = false;
-  final ProductService _productService = ProductService(ProductRepository());
 
+  final ProductService _productService = ProductService(ProductRepository());
   bool _isUpdatingRange = false;
   bool _isUpdatingTextFields = false;
 
@@ -41,8 +48,7 @@ class _FilterPageState extends State<FilterPage> {
   Future<void> _fetchUserStoreNumber() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc =
-          await _productService.getUserDocument(user.uid);
+      DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
       if (userDoc.exists) {
         final storeNumber = userDoc['storeNumber'];
         setState(() {
@@ -59,45 +65,44 @@ class _FilterPageState extends State<FilterPage> {
       final brand = _brandController.text.toLowerCase();
       final category = _categoryController.text.toLowerCase();
       final storeNumber = _storeNumber?.toLowerCase() ?? '';
+      final productId = _productIdController.text.trim();
 
       double minPrice = _priceRange.start;
-      double maxPrice =
-          _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
+      double maxPrice = _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
 
       if (_minPriceController.text.isNotEmpty) {
-        minPrice = double.tryParse(_minPriceController.text) ?? minPrice;
+        minPrice = double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? minPrice;
       }
 
       if (_maxPriceController.text.isNotEmpty) {
-        maxPrice = double.tryParse(_maxPriceController.text) ?? maxPrice;
+        maxPrice = double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ?? maxPrice;
       }
 
-      return snapshot.docs
-          .where((product) {
-            final data = product.data() as Map<String, dynamic>;
-            final productName = (data['name'] ?? "").toString().toLowerCase();
-            final productBrand = (data['brand'] ?? "").toString().toLowerCase();
-            final productCategory =
-                (data['category'] ?? "").toString().toLowerCase();
-            final productStoreNumber =
-                (data['storeNumber'] ?? "").toString().toLowerCase();
-            final productPrice = (data['salePrice'] ?? 0.0) is int
-                ? (data['salePrice'] as int).toDouble()
-                : (data['salePrice'] ?? 0.0) as double;
+      return snapshot.docs.where((product) {
+        final data = product.data() as Map<String, dynamic>;
+        final productName = (data['name'] ?? "").toString().toLowerCase();
+        final productBrand = (data['brand'] ?? "").toString().toLowerCase();
+        final productCategory = (data['category'] ?? "").toString().toLowerCase();
+        final productStoreNumber = (data['storeNumber'] ?? "").toString().toLowerCase();
+        final productPrice = (data['salePrice'] ?? 0.0) is int
+            ? (data['salePrice'] as int).toDouble()
+            : (data['salePrice'] ?? 0.0) as double;
+        final currentProductId = product.id;
 
-            if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
-              return false;
-            }
+        if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
+          return false;
+        }
 
-            return productName.contains(name) &&
-                productBrand.contains(brand) &&
-                productCategory.contains(category) &&
-                productPrice >= minPrice &&
-                productPrice <= maxPrice;
-          })
-          .toList()
-          .take(5)
-          .toList();
+        if (productId.isNotEmpty && currentProductId != productId) {
+          return false;
+        }
+
+        return productName.contains(name) &&
+            productBrand.contains(brand) &&
+            productCategory.contains(category) &&
+            productPrice >= minPrice &&
+            productPrice <= maxPrice;
+      }).toList();
     });
   }
 
@@ -107,11 +112,9 @@ class _FilterPageState extends State<FilterPage> {
     setState(() {
       _isUpdatingRange = true;
       _priceRange = newRange;
-      _minPriceController.text =
-          newRange.start.toStringAsFixed(2).replaceAll('.', ',');
-      _maxPriceController.text = newRange.end >= 5000
-          ? ''
-          : newRange.end.toStringAsFixed(2).replaceAll('.', ',');
+      _minPriceController.text = newRange.start.toStringAsFixed(2).replaceAll('.', ',');
+      _maxPriceController.text =
+          newRange.end >= 5000 ? '' : newRange.end.toStringAsFixed(2).replaceAll('.', ',');
       _isUpdatingRange = false;
     });
   }
@@ -121,14 +124,18 @@ class _FilterPageState extends State<FilterPage> {
 
     setState(() {
       _isUpdatingTextFields = true;
-      final min =
-          double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? 0;
-      final max =
-          double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ??
-              5000;
+      final min = double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? 0;
+      final max = double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ?? 5000;
 
       _priceRange = RangeValues(min.clamp(0, 5000), max.clamp(0, 5000));
       _isUpdatingTextFields = false;
+    });
+  }
+
+  void _onBarcodeScanned(String productId) {
+    setState(() {
+      _productIdController.text = productId;
+      _isProductIdVisible = true;
     });
   }
 
@@ -137,10 +144,10 @@ class _FilterPageState extends State<FilterPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Filter Products', style: TextStyle(color: Colors.white)),
+        title: const Text('Filter Products', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.grey),
+        iconTheme: const IconThemeData(color: Colors.grey),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -156,7 +163,7 @@ class _FilterPageState extends State<FilterPage> {
         ),
         child: Column(
           children: [
-            SizedBox(height: kToolbarHeight * 2),
+            const SizedBox(height: kToolbarHeight * 2),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: GlassmorphicFilterForm(
@@ -164,61 +171,43 @@ class _FilterPageState extends State<FilterPage> {
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
+                onProductIdScanned: _onBarcodeScanned,
                 dropdownWidget: Column(
                   children: [
                     GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _showPriceRange = !_showPriceRange;
-                        });
-                      },
+                      onTap: () => setState(() => _showPriceRange = !_showPriceRange),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
+                        children: const [
                           Text(
                             "  Price Range",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                           ),
-                          Icon(
-                            _showPriceRange
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: Colors.white,
-                          ),
+                          Icon(Icons.keyboard_arrow_down, color: Colors.white),
                         ],
                       ),
                     ),
                     if (_showPriceRange)
                       Column(
                         children: [
-                          PriceRangePicker(
-                            range: _priceRange,
-                            onChanged: _onPriceRangeChanged,
-                          ),
+                          PriceRangePicker(range: _priceRange, onChanged: _onPriceRangeChanged),
                           const SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
                                 child: TextField(
                                   controller: _minPriceController,
-                                  keyboardType: TextInputType.numberWithOptions(
-                                      decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [DecimalInputFormatter()],
                                   style: const TextStyle(color: Colors.white),
                                   decoration: const InputDecoration(
                                     labelText: 'Min Price',
                                     labelStyle: TextStyle(color: Colors.white),
                                     enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                     focusedBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
                                   onChanged: (_) => _onTextFieldChanged(),
@@ -228,20 +217,17 @@ class _FilterPageState extends State<FilterPage> {
                               Expanded(
                                 child: TextField(
                                   controller: _maxPriceController,
-                                  keyboardType: TextInputType.numberWithOptions(
-                                      decimal: true),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [DecimalInputFormatter()],
                                   style: const TextStyle(color: Colors.white),
                                   decoration: const InputDecoration(
                                     labelText: 'Max Price',
                                     labelStyle: TextStyle(color: Colors.white),
                                     enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                     focusedBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.white),
+                                      borderSide: BorderSide(color: Colors.white),
                                     ),
                                   ),
                                   onChanged: (_) => _onTextFieldChanged(),
@@ -256,9 +242,37 @@ class _FilterPageState extends State<FilterPage> {
                 onChanged: () => setState(() {}),
               ),
             ),
-            ProductCards(
-              stream: _filteredProductsStream(),
-              onProductTap: showProductDetailsDialog,
+            if (_isProductIdVisible)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: TextField(
+                  controller: _productIdController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Product ID',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 2),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.white),
+                      onPressed: () => setState(() {
+                        _productIdController.clear();
+                        _isProductIdVisible = false;
+                      }),
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            Expanded(
+              child: ProductCards(
+                stream: _filteredProductsStream(),
+                onProductTap: showProductDetailsDialog,
+              ),
             ),
           ],
         ),
@@ -277,11 +291,7 @@ class PriceRangePicker extends StatelessWidget {
   final RangeValues range;
   final Function(RangeValues) onChanged;
 
-  const PriceRangePicker({
-    super.key,
-    required this.range,
-    required this.onChanged,
-  });
+  const PriceRangePicker({super.key, required this.range, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -289,8 +299,7 @@ class PriceRangePicker extends StatelessWidget {
       children: [
         Text(
           "€${range.start.round()} - ${range.end >= 5000 ? "€5000+" : "€${range.end.round()}"}",
-          style:
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         RangeSlider(
           min: 0,

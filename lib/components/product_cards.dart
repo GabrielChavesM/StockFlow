@@ -1,15 +1,15 @@
-// lib/components/product_cards.dart
-
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:barcode/barcode.dart';
+import 'package:flutter_svg/svg.dart';
 
 class ProductCards extends StatelessWidget {
   final Stream<List<DocumentSnapshot>> stream;
   final void Function(BuildContext context, Map<String, dynamic> data)
       onProductTap;
-
-  // Campos extras opcionais
   final List<String> extraFields;
 
   const ProductCards({
@@ -76,9 +76,8 @@ class ProductCards extends StatelessWidget {
                                 width: 60,
                                 height: 60,
                                 color: Colors.grey[300],
-                                child: const Center(
-                                  child: Icon(Icons.qr_code,
-                                      size: 32, color: Colors.black45),
+                                child: BarcodeWidget(
+                                  productId: data['productId'] ?? '',
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -98,8 +97,6 @@ class ProductCards extends StatelessWidget {
                                         "Model: ${data['model'] ?? "Sem modelo"}"),
                                     Text(
                                         "Current Stock: ${data['stockCurrent'] ?? 0}"),
-
-                                    // Campos extras dinâmicos
                                     ...extraFields.map((field) {
                                       final label = _fieldLabel(field);
                                       final value = data[field] ?? 'N/A';
@@ -150,7 +147,6 @@ class ProductCards extends StatelessWidget {
     );
   }
 
-  // Renomeia os campos para melhor exibição
   String _fieldLabel(String field) {
     switch (field) {
       case 'warehouseLocation':
@@ -165,11 +161,26 @@ class ProductCards extends StatelessWidget {
   }
 }
 
-/*
-// How to use:
-ProductCards(
-  stream: _filteredProductsStream(),
-  onProductTap: showProductDetailsDialog,
-  extraFields: ['shopLocation', 'warehouseLocation', 'warehouseStock'],
-),
-*/
+class BarcodeWidget extends StatelessWidget {
+  final String productId;
+
+  const BarcodeWidget({Key? key, required this.productId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final barcode = Barcode.code128();
+    final svg = barcode.toSvg(
+      productId,
+      width: 200,
+      height: 80,
+      drawText: false,
+    );
+
+    return SvgPicture.string(
+      svg,
+      width: 60,
+      height: 60,
+      fit: BoxFit.contain,
+    );
+  }
+}

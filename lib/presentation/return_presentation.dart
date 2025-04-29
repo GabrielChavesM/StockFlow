@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/filter_form.dart';
+import '../components/product_cards.dart';
 import '../data/return_data.dart';
 import '../domain/return_domain.dart';
 
@@ -20,8 +21,12 @@ class _ReturnPageState extends State<ReturnPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
+  final TextEditingController _productIdController = TextEditingController(); // Add productId controller
+
+  bool _isProductIdVisible = false; // Controls the visibility of the productId field
+
   String _storeNumber = '';
-  int _breakageQty = 0; // Quantidade inicial de quebras
+  int _breakageQty = 0; // Initial breakage quantity
   final ProductService _productService = ProductService(ProductRepository());
 
   @override
@@ -43,6 +48,13 @@ class _ReturnPageState extends State<ReturnPage> {
         });
       }
     }
+  }
+
+  void _onBarcodeScanned(String productId) {
+    setState(() {
+      _productIdController.text = productId; // Set the scanned productId
+      _isProductIdVisible = true; // Make the productId field visible
+    });
   }
 
   @override
@@ -79,10 +91,38 @@ class _ReturnPageState extends State<ReturnPage> {
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onChanged: () =>
-                    setState(() {}), // Faz o setState quando o texto muda
+                onProductIdScanned: _onBarcodeScanned, // Pass the callback
+                onChanged: () => setState(() {}),
               ),
             ),
+            if (_isProductIdVisible)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: TextField(
+                  controller: _productIdController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Product ID',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 2),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.white),
+                      onPressed: () {
+                        setState(() {
+                          _productIdController.clear(); // Clear the productId field
+                          _isProductIdVisible = false; // Hide the field
+                        });
+                      },
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}), // Trigger filtering when the productId changes
+                ),
+              ),
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _productService.getProductsStream(),
@@ -108,9 +148,16 @@ class _ReturnPageState extends State<ReturnPage> {
                             .toLowerCase();
                         final currentStock = data['stockCurrent'] ?? 0;
                         final warehouseStock = data['wareHouseStock'] ?? 0;
+                        final currentProductId = product.id;
 
-                        // Verifica se o produto tem estoque (warehouseStock > 0 ou currentStock > 0)
+                        // Check if the product has stock
                         bool hasStock = currentStock > 0 || warehouseStock > 0;
+
+                        // Filter by productId
+                        if (_productIdController.text.isNotEmpty &&
+                            currentProductId != _productIdController.text.trim()) {
+                          return false;
+                        }
 
                         return productName
                                 .contains(_nameController.text.toLowerCase()) &&
@@ -121,7 +168,7 @@ class _ReturnPageState extends State<ReturnPage> {
                             (_storeNumber.isEmpty ||
                                 productStoreNumber ==
                                     _storeNumber.toLowerCase()) &&
-                            hasStock; // Apenas incluir produtos com estoque
+                            hasStock;
                       })
                       .toList()
                       .take(5)
@@ -143,9 +190,10 @@ class _ReturnPageState extends State<ReturnPage> {
                             width: 60,
                             height: 60,
                             color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.qr_code,
-                                  size: 32, color: Colors.black45),
+                            child: Center(
+                              child: BarcodeWidget(
+                                productId: data['productId'] ?? '',
+                              ),
                             ),
                           ),
                           title: Text(data['name'] ?? "Without name"),

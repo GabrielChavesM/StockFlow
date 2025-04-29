@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/filter_form.dart';
+import '../components/barcode_camera.dart';
+import '../components/product_cards.dart';
 import '../data/warehouse_data.dart';
 import '../domain/warehouse_domain.dart';
+import 'package:barcode/barcode.dart';
 
 // Presentation Layer
 class WarehouseFilteredPage extends StatefulWidget {
@@ -21,6 +24,10 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
+  final TextEditingController _productIdController = TextEditingController(); // Add productId controller
+
+  bool _isProductIdVisible = false; // Controls the visibility of the productId field
+
   List<DocumentSnapshot> _allProducts = []; // Mantém todos os produtos
   String? _selectedPriceRange;
 
@@ -48,6 +55,13 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
     }
   }
 
+  void _onBarcodeScanned(String productId) {
+    setState(() {
+      _productIdController.text = productId; // Set the scanned productId
+      _isProductIdVisible = true; // Make the productId field visible
+    });
+  }
+
   // Função de filtragem dos produtos
   Stream<List<DocumentSnapshot>> _filteredProductsStream() {
     return _productService.getProductsStream().map((snapshot) {
@@ -55,20 +69,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
       final brand = _brandController.text.toLowerCase();
       final category = _categoryController.text.toLowerCase();
       final storeNumber = _storeNumber?.toLowerCase() ?? '';
-
-      double minPrice = 0;
-      double maxPrice = double.infinity;
-
-      if (_selectedPriceRange != null) {
-        if (_selectedPriceRange == '5000+') {
-          minPrice = 5000;
-          maxPrice = double.infinity;
-        } else {
-          final range = _selectedPriceRange!.split('-');
-          minPrice = double.tryParse(range[0]) ?? 0;
-          maxPrice = double.tryParse(range[1]) ?? double.infinity;
-        }
-      }
+      final productId = _productIdController.text.trim(); // Get the productId
 
       return snapshot.docs
           .where((product) {
@@ -80,31 +81,27 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                 (data['category'] ?? "").toString().toLowerCase();
             final productStoreNumber =
                 (data['storeNumber'] ?? "").toString().toLowerCase();
-            final productPrice = (data['salePrice'] ?? 0.0) is int
-                ? (data['salePrice'] as int).toDouble()
-                : (data['salePrice'] ?? 0.0) as double;
+            final currentProductId = product.id;
             final warehouseStock = data['wareHouseStock'] ?? 0;
 
-            // Verifica se o estoque no armazém é maior que 0
+            // Filter by warehouse stock
             if (warehouseStock <= 0) return false;
 
-            // Verifica se o storeNumber é válido e corresponde ao filtro
+            // Filter by storeNumber
             if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
               return false;
             }
 
-            // Se o utilizador acabou de fazer login e não colocou um código de loja, não aparecem produtos
-            if (storeNumber.isEmpty) return false;
+            // Filter by productId
+            if (productId.isNotEmpty && currentProductId != productId) {
+              return false;
+            }
 
-            // Aplica os outros filtros
+            // Apply other filters
             return productName.contains(name) &&
                 productBrand.contains(brand) &&
-                productCategory.contains(category) &&
-                productPrice >= minPrice &&
-                productPrice <= maxPrice;
+                productCategory.contains(category);
           })
-          .toList()
-          .take(5)
           .toList();
     });
   }
@@ -174,8 +171,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
         title: Text('Warehouse Stock', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(
-            color: Colors.grey), // Muda a cor do botão de voltar para branco
+        iconTheme: IconThemeData(color: Colors.grey),
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -191,22 +187,46 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
         ),
         child: Column(
           children: [
-            SizedBox(height: kToolbarHeight * 2), // Compensa a altura da AppBar
+            SizedBox(height: kToolbarHeight * 2),
             Padding(
-              padding: const EdgeInsets.all(
-                  16.0), // Espaçamento igual ao LocationsPage
-
-              // Filter form
+              padding: const EdgeInsets.all(16.0),
               child: GlassmorphicFilterForm(
                 nameController: _nameController,
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onChanged: () =>
-                    setState(() {}), // Faz o setState quando o texto muda
+                onProductIdScanned: _onBarcodeScanned, // Pass the callback
+                onChanged: () => setState(() {}),
               ),
             ),
-
+            if (_isProductIdVisible)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: TextField(
+                  controller: _productIdController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Product ID',
+                    labelStyle: const TextStyle(color: Colors.white),
+                    enabledBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white),
+                    ),
+                    focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white, width: 2),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.white),
+                      onPressed: () {
+                        setState(() {
+                          _productIdController.clear();
+                          _isProductIdVisible = false;
+                        });
+                      },
+                    ),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
             Expanded(
               child: StreamBuilder<List<DocumentSnapshot>>(
                 stream: _filteredProductsStream(),
@@ -235,17 +255,18 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                       final documentId = product.id;
 
                       return Card(
-                        margin:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         child: ListTile(
                           leading: Container(
                             margin: const EdgeInsets.all(4.0),
                             width: 60,
                             height: 60,
                             color: Colors.grey[300],
-                            child: const Center(
-                              child: Icon(Icons.qr_code,
-                                  size: 32, color: Colors.black45),
+                            child: Center(
+                            child: BarcodeWidget(
+                              productId: data['productId'] ?? '',
+                            ),
+
                             ),
                           ),
                           title: Text(data['name'] ?? "Sem nome",
@@ -261,13 +282,11 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                                   children: [
                                     TextSpan(
                                       text: "Warehouse Stock: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text:
-                                          data['wareHouseStock']?.toString() ??
-                                              "No stock.",
+                                      text: data['wareHouseStock']?.toString() ??
+                                          "No stock.",
                                     ),
                                   ],
                                 ),
@@ -278,8 +297,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                                   children: [
                                     TextSpan(
                                       text: "Warehouse Location: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
                                       text: data['warehouseLocation'] ??
