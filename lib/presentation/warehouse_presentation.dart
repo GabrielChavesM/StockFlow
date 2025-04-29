@@ -1,5 +1,6 @@
 // ignore_for_file: library_private_types_in_public_api, deprecated_member_use, use_build_context_synchronously
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,6 +21,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
+  List<DocumentSnapshot> _allProducts = []; // Mantém todos os produtos
   String? _selectedPriceRange;
 
   String? _storeNumber;
@@ -34,7 +36,8 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
   Future<void> _fetchUserStoreNumber() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
+      DocumentSnapshot userDoc =
+          await _productService.getUserDocument(user.uid);
       if (userDoc.exists) {
         final storeNumber = userDoc['storeNumber'];
         setState(() {
@@ -67,219 +70,87 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
         }
       }
 
-      return snapshot.docs.where((product) {
-        final data = product.data() as Map<String, dynamic>;
+      return snapshot.docs
+          .where((product) {
+            final data = product.data() as Map<String, dynamic>;
 
-        final productName = (data['name'] ?? "").toString().toLowerCase();
-        final productBrand = (data['brand'] ?? "").toString().toLowerCase();
-        final productCategory = (data['category'] ?? "").toString().toLowerCase();
-        final productStoreNumber = (data['storeNumber'] ?? "").toString().toLowerCase();
-        final productPrice = (data['salePrice'] ?? 0.0) is int
-            ? (data['salePrice'] as int).toDouble()
-            : (data['salePrice'] ?? 0.0) as double;
-        final warehouseStock = data['wareHouseStock'] ?? 0;
+            final productName = (data['name'] ?? "").toString().toLowerCase();
+            final productBrand = (data['brand'] ?? "").toString().toLowerCase();
+            final productCategory =
+                (data['category'] ?? "").toString().toLowerCase();
+            final productStoreNumber =
+                (data['storeNumber'] ?? "").toString().toLowerCase();
+            final productPrice = (data['salePrice'] ?? 0.0) is int
+                ? (data['salePrice'] as int).toDouble()
+                : (data['salePrice'] ?? 0.0) as double;
+            final warehouseStock = data['wareHouseStock'] ?? 0;
 
-        // Verifica se o estoque no armazém é maior que 0
-        if (warehouseStock <= 0) return false;
+            // Verifica se o estoque no armazém é maior que 0
+            if (warehouseStock <= 0) return false;
 
-        // Verifica se o storeNumber é válido e corresponde ao filtro
-        if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
-          return false;
-        }
+            // Verifica se o storeNumber é válido e corresponde ao filtro
+            if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
+              return false;
+            }
 
-        // Se o utilizador acabou de fazer login e não colocou um código de loja, não aparecem produtos
-        if (storeNumber.isEmpty) return false;
+            // Se o utilizador acabou de fazer login e não colocou um código de loja, não aparecem produtos
+            if (storeNumber.isEmpty) return false;
 
-        // Aplica os outros filtros
-        return productName.contains(name) &&
-            productBrand.contains(brand) &&
-            productCategory.contains(category) &&
-            productPrice >= minPrice &&
-            productPrice <= maxPrice;
-      }).toList().take(5).toList();
+            // Aplica os outros filtros
+            return productName.contains(name) &&
+                productBrand.contains(brand) &&
+                productCategory.contains(category) &&
+                productPrice >= minPrice &&
+                productPrice <= maxPrice;
+          })
+          .toList()
+          .take(5)
+          .toList();
     });
   }
 
-  void _showEditLocationDialog(BuildContext context, TextEditingController locationController, String documentId) {
-    showDialog(
+  void _showEditLocationDialog(BuildContext context,
+      TextEditingController locationController, String documentId) {
+    // Fetch the current location of the product and set it in the controller
+    final product =
+        _allProducts.firstWhere((product) => product.id == documentId);
+    final data = product.data() as Map<String, dynamic>;
+    locationController.text = data['productLocation'] ?? "Not located.";
+
+    showCupertinoDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Editar Localização"),
-          content: TextField(
-            controller: locationController,
-            decoration: InputDecoration(
-              labelText: "Localização do Produto",
-              contentPadding: EdgeInsets.symmetric(vertical: 0.5, horizontal: 12.0),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white,
-                      offset: Offset(-4, -4),
-                      blurRadius: 6,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      offset: Offset(4, 4),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () async {
-                // Verifica se o campo está vazio e atribui "Not located." caso necessário
-                String locationText = locationController.text.isEmpty ? "Not located." : locationController.text;
-
-                try {
-                  await _productService.updateProductLocation(documentId, locationText);
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop();
-                } catch (e) {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error while saving location: $e')),
-                  );
-                }
-              },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white,
-                      offset: Offset(-4, -4),
-                      blurRadius: 6,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      offset: Offset(4, 4),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                child: Text(
-                  'Save',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showProductDetailsDialog(BuildContext context, Map<String, dynamic> data, String documentId) {
-    final TextEditingController locationController =
-        TextEditingController(text: data['warehouseLocation'] ?? '');
-
-    final details = {
-      "Brand": data['brand'] ?? "No brand",
-      "Model": data['model'] ?? "No model",
-      "Category": data['category'] ?? "No category",
-    };
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(data['name'] ?? "No name", style: TextStyle(fontWeight: FontWeight.bold)),
+        return CupertinoAlertDialog(
+          title: Text("Edit Location"),
           content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
             children: [
-              ...details.entries.map((entry) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: DefaultTextStyle.of(context).style,
-                        children: [
-                          TextSpan(
-                            text: "${entry.key}: ",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          TextSpan(text: entry.value),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 8), // Adiciona espaçamento entre os itens
-                    Divider(), // Linha separadora
-                  ],
-                );
-              }),
-
-              // Exibição da localização de forma clicável
-              GestureDetector(
-                onTap: () async {
-                  User? user = FirebaseAuth.instance.currentUser;
-                  if (user != null) {
-                    DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
-                    if (userDoc.exists) {
-                      String adminPermission = userDoc['adminPermission'] ?? '';
-                      if (adminPermission == _storeNumber) {
-                        _showEditLocationDialog(context, locationController, documentId);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Você não tem permissão para editar a localização.')),
-                        );
-                      }
-                    }
-                  }
-                },
-                child: RichText(
-                  text: TextSpan(
-                    style: DefaultTextStyle.of(context).style,
-                    children: [
-                      TextSpan(
-                        text: "Location: ",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: data['warehouseLocation'] ?? "Não localizado",
-                        style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
+              SizedBox(height: 12),
+              CupertinoTextField(
+                controller: locationController,
+                placeholder: "Product Location",
+                padding: EdgeInsets.all(12),
               ),
-              SizedBox(height: 8),
             ],
           ),
           actions: [
-            GestureDetector(
-              onTap: () async { 
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () async {
+                String locationText = locationController.text.isEmpty
+                    ? "Not located."
+                    : locationController.text;
+
                 try {
-                  await _productService.updateProductLocation(documentId, locationController.text);
-                  Navigator.of(context).pop();
+                  await _productService.updateProductLocation(
+                      documentId, locationText);
+                  setState(
+                      () {}); // Refresh the UI to reflect the updated location
+                  Navigator.of(context).pop(); // Close the CupertinoDialog
                 } catch (e) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -287,33 +158,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                   );
                 }
               },
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white,
-                      offset: Offset(-4, -4),
-                      blurRadius: 6,
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      offset: Offset(4, 4),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                child: Text(
-                  'Close',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              child: Text('Save'),
             ),
           ],
         );
@@ -329,7 +174,8 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
         title: Text('Warehouse Stock', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.grey), // Muda a cor do botão de voltar para branco
+        iconTheme: IconThemeData(
+            color: Colors.grey), // Muda a cor do botão de voltar para branco
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -347,7 +193,8 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
           children: [
             SizedBox(height: kToolbarHeight * 2), // Compensa a altura da AppBar
             Padding(
-              padding: const EdgeInsets.all(16.0), // Espaçamento igual ao LocationsPage
+              padding: const EdgeInsets.all(
+                  16.0), // Espaçamento igual ao LocationsPage
 
               // Filter form
               child: GlassmorphicFilterForm(
@@ -355,7 +202,8 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onChanged: () => setState(() {}), // Faz o setState quando o texto muda
+                onChanged: () =>
+                    setState(() {}), // Faz o setState quando o texto muda
               ),
             ),
 
@@ -372,6 +220,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                   }
 
                   final products = snapshot.data ?? [];
+                  _allProducts = products;
 
                   if (products.isEmpty) {
                     return Center(child: Text('No products available.'));
@@ -386,9 +235,21 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                       final documentId = product.id;
 
                       return Card(
-                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        margin:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         child: ListTile(
-                          title: Text(data['name'] ?? "Sem nome", style: TextStyle(fontWeight: FontWeight.bold)),
+                          leading: Container(
+                            margin: const EdgeInsets.all(4.0),
+                            width: 60,
+                            height: 60,
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.qr_code,
+                                  size: 32, color: Colors.black45),
+                            ),
+                          ),
+                          title: Text(data['name'] ?? "Sem nome",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -400,10 +261,13 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                                   children: [
                                     TextSpan(
                                       text: "Warehouse Stock: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: data['wareHouseStock']?.toString() ?? "No stock.",
+                                      text:
+                                          data['wareHouseStock']?.toString() ??
+                                              "No stock.",
                                     ),
                                   ],
                                 ),
@@ -414,17 +278,23 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                                   children: [
                                     TextSpan(
                                       text: "Warehouse Location: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: data['warehouseLocation'] ?? "Not located.",
+                                      text: data['warehouseLocation'] ??
+                                          "Not located.",
                                     ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
-                          onTap: () => _showProductDetailsDialog(context, data, documentId),
+                          onTap: () {
+                            final locationController = TextEditingController();
+                            _showEditLocationDialog(
+                                context, locationController, documentId);
+                          },
                         ),
                       );
                     },

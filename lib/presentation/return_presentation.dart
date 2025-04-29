@@ -33,11 +33,13 @@ class _ReturnPageState extends State<ReturnPage> {
   Future<void> _fetchUserStoreNumber() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
+      DocumentSnapshot userDoc =
+          await _productService.getUserDocument(user.uid);
       if (userDoc.exists) {
         setState(() {
           _storeNumber = userDoc['storeNumber'] ?? '';
-          _storeNumberController.text = _storeNumber;  // Atribui o valor ao controlador
+          _storeNumberController.text =
+              _storeNumber; // Atribui o valor ao controlador
         });
       }
     }
@@ -51,7 +53,8 @@ class _ReturnPageState extends State<ReturnPage> {
         title: Text('Stock Brakes', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.grey), // Muda a cor do botão de voltar para branco
+        iconTheme: IconThemeData(
+            color: Colors.grey), // Muda a cor do botão de voltar para branco
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -76,7 +79,8 @@ class _ReturnPageState extends State<ReturnPage> {
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onChanged: () => setState(() {}), // Faz o setState quando o texto muda
+                onChanged: () =>
+                    setState(() {}), // Faz o setState quando o texto muda
               ),
             ),
             Expanded(
@@ -90,24 +94,38 @@ class _ReturnPageState extends State<ReturnPage> {
                   final allProducts = snapshot.data!.docs;
 
                   // Filtragem dos produtos
-                  final filteredProducts = allProducts.where((product) {
-                    final data = product.data() as Map<String, dynamic>;
-                    final productName = (data['name'] ?? "").toString().toLowerCase();
-                    final productBrand = (data['brand'] ?? "").toString().toLowerCase();
-                    final productCategory = (data['category'] ?? "").toString().toLowerCase();
-                    final productStoreNumber = (data['storeNumber'] ?? "").toString().toLowerCase();
-                    final currentStock = data['stockCurrent'] ?? 0;
-                    final warehouseStock = data['wareHouseStock'] ?? 0;
+                  final filteredProducts = allProducts
+                      .where((product) {
+                        final data = product.data() as Map<String, dynamic>;
+                        final productName =
+                            (data['name'] ?? "").toString().toLowerCase();
+                        final productBrand =
+                            (data['brand'] ?? "").toString().toLowerCase();
+                        final productCategory =
+                            (data['category'] ?? "").toString().toLowerCase();
+                        final productStoreNumber = (data['storeNumber'] ?? "")
+                            .toString()
+                            .toLowerCase();
+                        final currentStock = data['stockCurrent'] ?? 0;
+                        final warehouseStock = data['wareHouseStock'] ?? 0;
 
-                    // Verifica se o produto tem estoque (warehouseStock > 0 ou currentStock > 0)
-                    bool hasStock = currentStock > 0 || warehouseStock > 0;
+                        // Verifica se o produto tem estoque (warehouseStock > 0 ou currentStock > 0)
+                        bool hasStock = currentStock > 0 || warehouseStock > 0;
 
-                    return productName.contains(_nameController.text.toLowerCase()) &&
-                        productBrand.contains(_brandController.text.toLowerCase()) &&
-                        productCategory.contains(_categoryController.text.toLowerCase()) &&
-                        (_storeNumber.isEmpty || productStoreNumber == _storeNumber.toLowerCase()) &&
-                        hasStock; // Apenas incluir produtos com estoque
-                  }).toList().take(5).toList(); // Limita a 5 produtos
+                        return productName
+                                .contains(_nameController.text.toLowerCase()) &&
+                            productBrand.contains(
+                                _brandController.text.toLowerCase()) &&
+                            productCategory.contains(
+                                _categoryController.text.toLowerCase()) &&
+                            (_storeNumber.isEmpty ||
+                                productStoreNumber ==
+                                    _storeNumber.toLowerCase()) &&
+                            hasStock; // Apenas incluir produtos com estoque
+                      })
+                      .toList()
+                      .take(5)
+                      .toList(); // Limita a 5 produtos
 
                   return ListView.builder(
                     padding: EdgeInsets.symmetric(vertical: 0),
@@ -117,22 +135,36 @@ class _ReturnPageState extends State<ReturnPage> {
                       final data = product.data() as Map<String, dynamic>;
 
                       return Card(
-                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        margin:
+                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         child: ListTile(
+                          leading: Container(
+                            margin: const EdgeInsets.all(4.0),
+                            width: 60,
+                            height: 60,
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Icon(Icons.qr_code,
+                                  size: 32, color: Colors.black45),
+                            ),
+                          ),
                           title: Text(data['name'] ?? "Without name"),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Brand: ${data['brand'] ?? "Without brand"}"),
+                              Text(
+                                  "Brand: ${data['brand'] ?? "Without brand"}"),
                               Text.rich(
                                 TextSpan(
                                   children: [
                                     TextSpan(
                                       text: "Current Stock: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: (data['stockCurrent'] ?? 0).toString(),
+                                      text: (data['stockCurrent'] ?? 0)
+                                          .toString(),
                                     ),
                                   ],
                                 ),
@@ -143,10 +175,12 @@ class _ReturnPageState extends State<ReturnPage> {
                                   children: [
                                     TextSpan(
                                       text: "Warehouse Stock: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold),
                                     ),
                                     TextSpan(
-                                      text: (data['wareHouseStock'] ?? 0).toString(),
+                                      text: (data['wareHouseStock'] ?? 0)
+                                          .toString(),
                                     ),
                                   ],
                                 ),
@@ -156,9 +190,11 @@ class _ReturnPageState extends State<ReturnPage> {
                           onTap: () async {
                             User? user = FirebaseAuth.instance.currentUser;
                             if (user != null) {
-                              DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
+                              DocumentSnapshot userDoc = await _productService
+                                  .getUserDocument(user.uid);
                               if (userDoc.exists) {
-                                String adminPermission = userDoc['adminPermission'] ?? '';
+                                String adminPermission =
+                                    userDoc['adminPermission'] ?? '';
                                 if (adminPermission == _storeNumber) {
                                   _showBreakageDialog(context, product);
                                 } else {
@@ -186,14 +222,16 @@ class _ReturnPageState extends State<ReturnPage> {
   void _showBreakageDialog(BuildContext context, DocumentSnapshot product) {
     final data = product.data() as Map<String, dynamic>;
 
-    String breakageType = 'stockCurrent'; // Tipo inicial padrão: Estoque de Loja
+    String breakageType =
+        'stockCurrent'; // Tipo inicial padrão: Estoque de Loja
 
     // Obtendo o estoque disponível
     int currentStock = data['stockCurrent'] ?? 0;
     int warehouseStock = data['wareHouseStock'] ?? 0;
 
     // A quantidade máxima que pode ser selecionada será o estoque disponível
-    int maxBreakageQty = (breakageType == 'stockCurrent') ? currentStock : warehouseStock;
+    int maxBreakageQty =
+        (breakageType == 'stockCurrent') ? currentStock : warehouseStock;
 
     showDialog(
       context: context,
@@ -212,7 +250,8 @@ class _ReturnPageState extends State<ReturnPage> {
                   children: [
                     Text(
                       "Product Breakage: ${data['name'] ?? "Without name"}",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 10),
                     Text("Store Stock: $currentStock"),
@@ -230,9 +269,12 @@ class _ReturnPageState extends State<ReturnPage> {
                             setState(() {
                               breakageType = value!;
                               // Atualiza a quantidade máxima de quebra conforme o tipo de estoque
-                              maxBreakageQty = (breakageType == 'stockCurrent') ? currentStock : warehouseStock;
+                              maxBreakageQty = (breakageType == 'stockCurrent')
+                                  ? currentStock
+                                  : warehouseStock;
                               if (_breakageQty > maxBreakageQty) {
-                                _breakageQty = maxBreakageQty; // Ajusta a quantidade se necessário
+                                _breakageQty =
+                                    maxBreakageQty; // Ajusta a quantidade se necessário
                               }
                             });
                           },
@@ -245,9 +287,12 @@ class _ReturnPageState extends State<ReturnPage> {
                             setState(() {
                               breakageType = value!;
                               // Atualiza a quantidade máxima de quebra conforme o tipo de estoque
-                              maxBreakageQty = (breakageType == 'stockCurrent') ? currentStock : warehouseStock;
+                              maxBreakageQty = (breakageType == 'stockCurrent')
+                                  ? currentStock
+                                  : warehouseStock;
                               if (_breakageQty > maxBreakageQty) {
-                                _breakageQty = maxBreakageQty; // Ajusta a quantidade se necessário
+                                _breakageQty =
+                                    maxBreakageQty; // Ajusta a quantidade se necessário
                               }
                             });
                           },
@@ -274,7 +319,8 @@ class _ReturnPageState extends State<ReturnPage> {
                           icon: Icon(Icons.add),
                           onPressed: () {
                             setState(() {
-                              if (_breakageQty < maxBreakageQty) _breakageQty++; // Respeita o limite do estoque
+                              if (_breakageQty < maxBreakageQty)
+                                _breakageQty++; // Respeita o limite do estoque
                             });
                           },
                         ),
@@ -291,7 +337,8 @@ class _ReturnPageState extends State<ReturnPage> {
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.grey[100], // Cor do fundo
-                              borderRadius: BorderRadius.circular(12), // Bordas arredondadas
+                              borderRadius: BorderRadius.circular(
+                                  12), // Bordas arredondadas
                               boxShadow: [
                                 // Sombra clara (parte superior)
                                 BoxShadow(
@@ -301,13 +348,16 @@ class _ReturnPageState extends State<ReturnPage> {
                                 ),
                                 // Sombra escura (parte inferior)
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1), // Sombra escura
+                                  color: Colors.black
+                                      .withOpacity(0.1), // Sombra escura
                                   offset: Offset(4, 4), // Direção da sombra
                                   blurRadius: 6, // Difusão da sombra
                                 ),
                               ],
                             ),
-                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Espaçamento interno
+                            padding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 20), // Espaçamento interno
                             child: Text(
                               'Cancel',
                               style: TextStyle(
@@ -322,17 +372,21 @@ class _ReturnPageState extends State<ReturnPage> {
                           onTap: () async {
                             if (_breakageQty <= 0) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Invalid breakage quantity")),
+                                SnackBar(
+                                    content: Text("Invalid breakage quantity")),
                               );
                               return;
                             }
 
-                            _showConfirmationDialog(context, product, breakageType);
+                            _showConfirmationDialog(
+                                context, product, breakageType);
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.blue, // Cor do fundo (ajuste conforme necessário)
-                              borderRadius: BorderRadius.circular(12), // Bordas arredondadas
+                              color: Colors
+                                  .blue, // Cor do fundo (ajuste conforme necessário)
+                              borderRadius: BorderRadius.circular(
+                                  12), // Bordas arredondadas
                               boxShadow: [
                                 // Sombra clara (parte superior)
                                 BoxShadow(
@@ -342,13 +396,16 @@ class _ReturnPageState extends State<ReturnPage> {
                                 ),
                                 // Sombra escura (parte inferior)
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1), // Sombra escura
+                                  color: Colors.black
+                                      .withOpacity(0.1), // Sombra escura
                                   offset: Offset(4, 4), // Direção da sombra
                                   blurRadius: 6, // Difusão da sombra
                                 ),
                               ],
                             ),
-                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Espaçamento interno
+                            padding: EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 20), // Espaçamento interno
                             child: Text(
                               'Save',
                               style: TextStyle(
@@ -371,7 +428,8 @@ class _ReturnPageState extends State<ReturnPage> {
     );
   }
 
-  void _showConfirmationDialog(BuildContext context, DocumentSnapshot product, String breakageType) {
+  void _showConfirmationDialog(
+      BuildContext context, DocumentSnapshot product, String breakageType) {
     final data = product.data() as Map<String, dynamic>;
 
     showDialog(
@@ -396,8 +454,9 @@ class _ReturnPageState extends State<ReturnPage> {
 
                 if (newStock < 0) newStock = 0;
 
-                String breakageField =
-                    breakageType == 'stockCurrent' ? 'storeBreak' : 'warehouseStockBreak';
+                String breakageField = breakageType == 'stockCurrent'
+                    ? 'storeBreak'
+                    : 'warehouseStockBreak';
                 int stockBreak = data[breakageField] ?? 0;
                 stockBreak += _breakageQty;
 

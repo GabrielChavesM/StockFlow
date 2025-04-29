@@ -15,7 +15,14 @@ class ProductService {
     return _productRepository.getProductsStream();
   }
 
-  Future<void> updateProductLocation(String documentId, String location) {
-    return _productRepository.updateProductLocation(documentId, location);
+  Future<void> updateProductLocation(String documentId, String location) async {
+    if (documentId.isEmpty) {
+      throw ArgumentError('Document ID cannot be empty.');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('products')
+        .doc(documentId)
+        .update({'productLocation': location});
   }
 }

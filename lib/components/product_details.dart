@@ -1,5 +1,9 @@
 // lib/components/product_dialog.dart
 
+// TODO
+// "Shop Location", "Warehouse Location" e "Warehouse Stock" optional
+// User can edit shop location and warehouse location if admin
+
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
@@ -10,7 +14,7 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
     "Category": data['category'] ?? "Without category",
     "Subcategory": data['subCategory'] ?? "Without subcategory",
     "Description": data['description'] ?? "Without description",
-    "Sale Price": "€ ${data['salePrice']?.toStringAsFixed(2) ?? "0.00"}",
+    "Sale Price": "€ ${data['vatPrice']?.toStringAsFixed(2) ?? "0.00"}",
     "Current Stock": "${data['stockCurrent'] ?? 0}",
     "Stock Order": "${data['stockOrder'] ?? 0}",
   };
@@ -60,7 +64,8 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
                 alignment: Alignment.topRight,
                 child: GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(Icons.close, size: 28, color: Colors.black87),
+                  child:
+                      const Icon(Icons.close, size: 28, color: Colors.black87),
                 ),
               ),
             ),
@@ -80,7 +85,8 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
             // Details
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 children: details.entries.map((entry) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -88,7 +94,8 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(icons[entry.key], color: Colors.black54, size: 24.0),
+                          Icon(icons[entry.key],
+                              color: Colors.black54, size: 24.0),
                           const SizedBox(width: 12.0),
                           Expanded(
                             child: RichText(
@@ -100,11 +107,13 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
                                 children: [
                                   TextSpan(
                                     text: "${entry.key}: ",
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   TextSpan(
                                     text: entry.value,
-                                    style: const TextStyle(color: Colors.black54),
+                                    style:
+                                        const TextStyle(color: Colors.black54),
                                   ),
                                 ],
                               ),
@@ -113,7 +122,11 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
                         ],
                       ),
                       const SizedBox(height: 6),
-                      const Divider(color: Colors.black26, thickness: 0.5, indent: 20, endIndent: 20),
+                      const Divider(
+                          color: Colors.black26,
+                          thickness: 0.5,
+                          indent: 20,
+                          endIndent: 20),
                       const SizedBox(height: 6),
                     ],
                   );
