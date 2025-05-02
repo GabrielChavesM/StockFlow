@@ -1,29 +1,57 @@
-import 'dart:typed_data';
-import 'dart:ui' as ui;
+// ignore_for_file: use_super_parameters, library_private_types_in_public_api, deprecated_member_use
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:barcode/barcode.dart';
 import 'package:flutter_svg/svg.dart';
 
-class ProductCards extends StatelessWidget {
+class ProductCards extends StatefulWidget {
   final Stream<List<DocumentSnapshot>> stream;
   final void Function(BuildContext context, Map<String, dynamic> data)
       onProductTap;
   final List<String> extraFields;
+  final Duration loadingDuration;
 
   const ProductCards({
     Key? key,
     required this.stream,
     required this.onProductTap,
     this.extraFields = const [],
+    this.loadingDuration =
+        const Duration(milliseconds: 500), // Default to 0.5 seconds
   }) : super(key: key);
 
   @override
+  _ProductCardsState createState() => _ProductCardsState();
+}
+
+class _ProductCardsState extends State<ProductCards> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _simulateLoading();
+  }
+
+  Future<void> _simulateLoading() async {
+    await Future.delayed(widget.loadingDuration); // Simulate loading delay
+    setState(() {
+      _isLoading = false; // Stop loading after the delay
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+          child: CircularProgressIndicator()); // Show loading indicator
+    }
+
     return Expanded(
       child: StreamBuilder<List<DocumentSnapshot>>(
-        stream: stream,
+        stream: widget.stream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -39,17 +67,20 @@ class ProductCards extends StatelessWidget {
             return const Center(child: Text('No products available.'));
           }
 
+          // Limit the number of products to 5
+          final limitedProducts = products.take(5).toList();
+
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            itemCount: products.length,
+            itemCount: limitedProducts.length,
             itemBuilder: (context, index) {
-              final product = products[index];
+              final product = limitedProducts[index];
               final data = product.data() as Map<String, dynamic>;
 
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: InkWell(
-                  onTap: () => onProductTap(context, data),
+                  onTap: () => widget.onProductTap(context, data),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Container(
@@ -97,7 +128,7 @@ class ProductCards extends StatelessWidget {
                                         "Model: ${data['model'] ?? "Sem modelo"}"),
                                     Text(
                                         "Current Stock: ${data['stockCurrent'] ?? 0}"),
-                                    ...extraFields.map((field) {
+                                    ...widget.extraFields.map((field) {
                                       final label = _fieldLabel(field);
                                       final value = data[field] ?? 'N/A';
                                       return RichText(

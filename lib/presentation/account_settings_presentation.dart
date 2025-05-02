@@ -108,7 +108,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
             _buildOptionButton(
               icon: Icons.person,
               title: 'User Profile',
-              subtitle: 'Name: ${_name.isNotEmpty ? _name : "Not set"}\nEmail: $_email\nStore Number: ${_storeNumber.isNotEmpty ? _storeNumber : "Not set"}',
+              subtitle:
+                  'Name: ${_name.isNotEmpty ? _name : "Not set"}\nEmail: $_email\nStore Number: ${_storeNumber.isNotEmpty ? _storeNumber : "Not set"}',
               onTap: () {
                 _setUserDataDialog(context);
               },
@@ -125,7 +126,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               title: 'Activity History',
               onTap: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => LoginLogoutHistoryPage()),
+                  MaterialPageRoute(
+                      builder: (context) => LoginLogoutHistoryPage()),
                 );
               },
             ),
@@ -189,7 +191,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
               child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 24.0),
+                padding: const EdgeInsets.symmetric(
+                    vertical: 16.0, horizontal: 24.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(
@@ -216,7 +219,9 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                           if (subtitle != null)
                             Text(
                               subtitle,
-                              style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.7)),
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withOpacity(0.7)),
                             ),
                         ],
                       ),
@@ -250,7 +255,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               TextField(
                 controller: _storeNumberController,
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: 'Enter your store number'),
+                decoration:
+                    InputDecoration(labelText: 'Enter your store number'),
               ),
             ],
           ),
@@ -265,19 +271,30 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onPressed: () {
-                if ((_nameController.text.isNotEmpty && _nameController.text != _name) ||
-                    (_storeNumberController.text.isNotEmpty && _storeNumberController.text != _storeNumber)) {
+                if ((_nameController.text.isNotEmpty &&
+                        _nameController.text != _name) ||
+                    (_storeNumberController.text.isNotEmpty &&
+                        _storeNumberController.text != _storeNumber)) {
                   _saveUserData(
-                    _nameController.text.isNotEmpty ? _nameController.text : _name,
-                    _storeNumberController.text.isNotEmpty ? _storeNumberController.text : _storeNumber,
+                    _nameController.text.isNotEmpty
+                        ? _nameController.text
+                        : _name,
+                    _storeNumberController.text.isNotEmpty
+                        ? _storeNumberController.text
+                        : _storeNumber,
                   );
                   setState(() {
-                    _name = _nameController.text.isNotEmpty ? _nameController.text : _name;
-                    _storeNumber = _storeNumberController.text.isNotEmpty ? _storeNumberController.text : _storeNumber;
+                    _name = _nameController.text.isNotEmpty
+                        ? _nameController.text
+                        : _name;
+                    _storeNumber = _storeNumberController.text.isNotEmpty
+                        ? _storeNumberController.text
+                        : _storeNumber;
                   });
                   Navigator.of(context).pop();
                 } else {
-                  _showAlert('Please fill in at least one field with a new value.');
+                  _showAlert(
+                      'Please fill in at least one field with a new value.');
                 }
               },
             ),
@@ -293,14 +310,16 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       builder: (context) {
         return AlertDialog(
           title: Text('Confirm Password Reset'),
-          content: Text('Are you sure you want to send a password reset link to $_email?'),
+          content: Text(
+              'Are you sure you want to send a password reset link to $_email?'),
           actions: [
             TextButton(
               child: Text('Cancel'),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: Text('Send Reset Email', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Send Reset Email',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
                 _sendPasswordResetEmail();
                 Navigator.of(context).pop();
@@ -319,7 +338,6 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
         return AlertDialog(
           title: Text('Privacy Policy'),
           content: SingleChildScrollView(
-            // Calls class for privacy policy text
             child: Text(PrivacyPolicy.privacyPolicyText),
           ),
           actions: [
@@ -339,7 +357,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
       builder: (context) {
         return AlertDialog(
           title: Text('Support Email'),
-          content: Text('For assistance, please contact: helpstockflow@gmail.com'),
+          content:
+              Text('For assistance, please contact: helpstockflow@gmail.com'),
           actions: [
             TextButton(
               child: Text('Close'),
@@ -358,26 +377,31 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     showDialog(
       context: context,
       builder: (context) {
-        bool isGoogleSignIn = _userService.currentUser!.providerData.any((provider) => provider.providerId == "google.com");
+        bool isGoogleSignIn = _userService.currentUser!.providerData
+            .any((provider) => provider.providerId == "google.com");
 
         return AlertDialog(
           title: Text('Account Deletion Confirmation'),
           content: isGoogleSignIn
-              ? Text('Since you are logged in with Google, simply confirm your account to delete it.')
+              ? Text(
+                  'Since you are logged in with Google, simply confirm your account to delete it.')
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('Are you sure you want to remove your account? This action cannot be undone.'),
+                    Text(
+                        'Are you sure you want to remove your account? This action cannot be undone.'),
                     SizedBox(height: 16),
                     TextField(
                       controller: emailController,
-                      decoration: InputDecoration(labelText: 'Re-enter your email'),
+                      decoration:
+                          InputDecoration(labelText: 'Re-enter your email'),
                     ),
                     SizedBox(height: 16),
                     TextField(
                       controller: passwordController,
                       obscureText: true,
-                      decoration: InputDecoration(labelText: 'Enter your password'),
+                      decoration:
+                          InputDecoration(labelText: 'Enter your password'),
                     ),
                   ],
                 ),
@@ -387,7 +411,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: Text('Remove Account', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Remove Account',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () async {
                 if (isGoogleSignIn) {
                   try {
@@ -395,11 +420,14 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     await _userService.deleteUser();
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+                      MaterialPageRoute(
+                          builder: (context) =>
+                              LoginPage(showRegisterPage: () {})),
                     );
                     _showAlert('Account successfully deleted.');
                   } catch (e) {
-                    _showAlert('An error occurred while reauthenticating with Google. Please try again.');
+                    _showAlert(
+                        'An error occurred while reauthenticating with Google. Please try again.');
                   }
                 } else {
                   if (emailController.text != _email) {
@@ -408,11 +436,14 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     _showAlert('Password field cannot be empty.');
                   } else {
                     try {
-                      await _userService.reauthenticateWithEmail(emailController.text, passwordController.text);
+                      await _userService.reauthenticateWithEmail(
+                          emailController.text, passwordController.text);
                       await _userService.deleteUser();
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (context) => LoginPage(showRegisterPage: () {})),
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                LoginPage(showRegisterPage: () {})),
                       );
                       _showAlert('Account successfully deleted.');
                     } on FirebaseAuthException catch (e) {
@@ -441,7 +472,8 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: Text('Sign Out',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
                 _userService.signOut();
                 Navigator.of(context).pushAndRemoveUntil(

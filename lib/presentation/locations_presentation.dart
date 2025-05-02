@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/filter_form.dart';
-
-import '../components/barcode_camera.dart';
+import 'package:stockflow/presentation/map_page.dart';
 import '../components/product_cards.dart';
 import '../data/locations_data.dart';
 import '../domain/locations_domain.dart';
@@ -24,18 +23,27 @@ class _LocationsPageState extends State<LocationsPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
-  final TextEditingController _productIdController = TextEditingController(); // Add productId controller
+  final TextEditingController _productIdController = TextEditingController();
 
-  bool _isProductIdVisible = false; // Controls the visibility of the productId field
+  bool _isProductIdVisible = false;
+  bool _isLoadingCards = true; // Add loading state for product cards
 
-  List<DocumentSnapshot> _allProducts = []; // Mantém todos os produtos
+  List<DocumentSnapshot> _allProducts = [];
   String _storeNumber = '';
   final ProductService _productService = ProductService(ProductRepository());
 
   @override
   void initState() {
     super.initState();
+    _simulateCardLoading(); // Simulate loading for product cards
     _fetchUserStoreNumber();
+  }
+
+  Future<void> _simulateCardLoading() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() {
+      _isLoadingCards = false; // Stop loading after the delay
+    });
   }
 
   // Função para buscar o número da loja do utilizador logado
@@ -93,8 +101,18 @@ class _LocationsPageState extends State<LocationsPage> {
   void _onBarcodeScanned(String productId) {
     setState(() {
       _productIdController.text = productId; // Set the scanned productId
-      _isProductIdVisible = true; // Make the productId field visible
+      _isProductIdVisible = true;
     });
+  }
+
+  void _onMapIconPressed() {
+    // Example: Navigate to a map page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MapPage(), // Replace with your map page widget
+      ),
+    );
   }
 
   @override
@@ -106,6 +124,14 @@ class _LocationsPageState extends State<LocationsPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.grey),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.map, color: Colors.white), // Add map icon
+            onPressed: () {
+              _onMapIconPressed(); // Call the map icon handler
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -136,7 +162,8 @@ class _LocationsPageState extends State<LocationsPage> {
             ),
             if (_isProductIdVisible)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: TextField(
                   controller: _productIdController,
                   style: const TextStyle(color: Colors.white),
@@ -163,93 +190,112 @@ class _LocationsPageState extends State<LocationsPage> {
                 ),
               ),
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _productService.getProductsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
+              child: _isLoadingCards
+                  ? Center(
+                      child:
+                          CircularProgressIndicator()) // Show loading indicator
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: _productService.getProductsStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
 
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Erro ao carregar os produtos.'));
-                  }
+                        if (snapshot.hasError) {
+                          return Center(
+                              child: Text('Erro ao carregar os produtos.'));
+                        }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(child: Text('Nenhum produto encontrado.'));
-                  }
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return Center(
+                              child: Text('Nenhum produto encontrado.'));
+                        }
 
-                  _allProducts = snapshot.data!.docs;
-                  final filteredProducts = _applyFilters(_allProducts);
+                        _allProducts = snapshot.data!.docs;
+                        final filteredProducts = _applyFilters(_allProducts);
 
-                  return ListView.builder(
-                    padding: EdgeInsets.symmetric(vertical: 0),
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      final data = product.data() as Map<String, dynamic>;
-                      final documentId = product.id;
+                        return ListView.builder(
+                          padding: EdgeInsets.symmetric(vertical: 0),
+                          itemCount: filteredProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = filteredProducts[index];
+                            final data = product.data() as Map<String, dynamic>;
+                            final documentId = product.id;
 
-                      return Card(
-                        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        child: ListTile(
-                          leading: Container(
-                            margin: const EdgeInsets.all(4.0),
-                            width: 60,
-                            height: 60,
-                            color: Colors.grey[300],
-                            child: BarcodeWidget(
-                              productId: data['productId'] ?? '',
-                            ),
-                          ),
-                          title: Text(
-                            data['name'] ?? "Sem nome",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text("Brand: ${data['brand'] ?? "Sem marca"}"),
-                              Text("Model: ${data['model'] ?? "Sem modelo"}"),
-                              RichText(
-                                text: TextSpan(
-                                  style: DefaultTextStyle.of(context).style,
+                            return Card(
+                              margin: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 16),
+                              child: ListTile(
+                                leading: Container(
+                                  margin: const EdgeInsets.all(4.0),
+                                  width: 60,
+                                  height: 60,
+                                  color: Colors.grey[300],
+                                  child: BarcodeWidget(
+                                    productId: data['productId'] ?? '',
+                                  ),
+                                ),
+                                title: Text(
+                                  data['name'] ?? "Sem nome",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    TextSpan(
-                                      text: "Current Stock: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
+                                    Text(
+                                        "Brand: ${data['brand'] ?? "Sem marca"}"),
+                                    Text(
+                                        "Model: ${data['model'] ?? "Sem modelo"}"),
+                                    RichText(
+                                      text: TextSpan(
+                                        style:
+                                            DefaultTextStyle.of(context).style,
+                                        children: [
+                                          TextSpan(
+                                            text: "Current Stock: ",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          TextSpan(
+                                            text: data['stockCurrent']
+                                                    ?.toString() ??
+                                                "No stock.",
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    TextSpan(
-                                      text: data['stockCurrent']?.toString() ?? "No stock.",
+                                    RichText(
+                                      text: TextSpan(
+                                        style:
+                                            DefaultTextStyle.of(context).style,
+                                        children: [
+                                          TextSpan(
+                                            text: "Shop Location: ",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          TextSpan(
+                                            text: data['productLocation'] ??
+                                                "Not located.",
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
+                                onTap: () {
+                                  final locationController =
+                                      TextEditingController();
+                                  _showEditLocationDialog(
+                                      context, locationController, documentId);
+                                },
                               ),
-                              RichText(
-                                text: TextSpan(
-                                  style: DefaultTextStyle.of(context).style,
-                                  children: [
-                                    TextSpan(
-                                      text: "Shop Location: ",
-                                      style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(
-                                      text: data['productLocation'] ?? "Not located.",
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          onTap: () {
-                            final locationController = TextEditingController();
-                            _showEditLocationDialog(context, locationController, documentId);
+                            );
                           },
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
@@ -258,13 +304,40 @@ class _LocationsPageState extends State<LocationsPage> {
   }
 
   // Função para mostrar o diálogo de detalhes do produto
-
   void _showEditLocationDialog(BuildContext context,
-      TextEditingController locationController, String documentId) {
-    // Fetch the current location of the product and set it in the controller
-    final product =
-        _allProducts.firstWhere((product) => product.id == documentId);
+      TextEditingController locationController, String documentId) async {
+    // Fetch the current product
+    final product = _allProducts.firstWhere(
+      (product) => product.id == documentId,
+      orElse: () => throw Exception(
+          'No matching product found'), // Throw an exception if no product is found
+    );
+
     final data = product.data() as Map<String, dynamic>;
+    final productStoreNumber = data['storeNumber'] ?? '';
+
+    // Fetch the current user's adminPermission
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      DocumentSnapshot userDoc =
+          await _productService.getUserDocument(user.uid);
+      if (userDoc.exists) {
+        String adminPermission = userDoc['adminPermission'] ?? '';
+
+        // Check if the user is an admin for this product's store
+        if (adminPermission != productStoreNumber) {
+          // Show a message and prevent editing
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('You do not have permission to edit this location.')),
+          );
+          return;
+        }
+      }
+    }
+
+    // If the user is an admin, allow editing
     locationController.text = data['productLocation'] ?? "Not located.";
 
     showCupertinoDialog(
@@ -300,7 +373,7 @@ class _LocationsPageState extends State<LocationsPage> {
                       documentId, locationText);
                   setState(
                       () {}); // Refresh the UI to reflect the updated location
-                  Navigator.of(context).pop(); // Close the CupertinoDialog
+                  Navigator.of(context).pop();
                 } catch (e) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(

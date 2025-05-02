@@ -1,11 +1,6 @@
 // lib/components/product_dialog.dart
 
-// TODO
-// "Shop Location", "Warehouse Location" e "Warehouse Stock" optional
-// User can edit shop location and warehouse location if admin
-
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
   final details = {

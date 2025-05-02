@@ -21,9 +21,10 @@ class _ReturnPageState extends State<ReturnPage> {
   final TextEditingController _brandController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _storeNumberController = TextEditingController();
-  final TextEditingController _productIdController = TextEditingController(); // Add productId controller
+  final TextEditingController _productIdController = TextEditingController();
 
-  bool _isProductIdVisible = false; // Controls the visibility of the productId field
+  bool _isProductIdVisible = false;
+  bool _isLoadingCards = true; // Add loading state for product cards
 
   String _storeNumber = '';
   int _breakageQty = 0; // Initial breakage quantity
@@ -32,7 +33,15 @@ class _ReturnPageState extends State<ReturnPage> {
   @override
   void initState() {
     super.initState();
+    _simulateCardLoading(); // Simulate loading for product cards
     _fetchUserStoreNumber();
+  }
+
+  Future<void> _simulateCardLoading() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() {
+      _isLoadingCards = false; // Stop loading after the delay
+    });
   }
 
   Future<void> _fetchUserStoreNumber() async {
@@ -97,7 +106,8 @@ class _ReturnPageState extends State<ReturnPage> {
             ),
             if (_isProductIdVisible)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: TextField(
                   controller: _productIdController,
                   style: const TextStyle(color: Colors.white),
@@ -114,151 +124,169 @@ class _ReturnPageState extends State<ReturnPage> {
                       icon: const Icon(Icons.clear, color: Colors.white),
                       onPressed: () {
                         setState(() {
-                          _productIdController.clear(); // Clear the productId field
+                          _productIdController
+                              .clear(); // Clear the productId field
                           _isProductIdVisible = false; // Hide the field
                         });
                       },
                     ),
                   ),
-                  onChanged: (_) => setState(() {}), // Trigger filtering when the productId changes
+                  onChanged: (_) => setState(
+                      () {}), // Trigger filtering when the productId changes
                 ),
               ),
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _productService.getProductsStream(),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-
-                  final allProducts = snapshot.data!.docs;
-
-                  // Filtragem dos produtos
-                  final filteredProducts = allProducts
-                      .where((product) {
-                        final data = product.data() as Map<String, dynamic>;
-                        final productName =
-                            (data['name'] ?? "").toString().toLowerCase();
-                        final productBrand =
-                            (data['brand'] ?? "").toString().toLowerCase();
-                        final productCategory =
-                            (data['category'] ?? "").toString().toLowerCase();
-                        final productStoreNumber = (data['storeNumber'] ?? "")
-                            .toString()
-                            .toLowerCase();
-                        final currentStock = data['stockCurrent'] ?? 0;
-                        final warehouseStock = data['wareHouseStock'] ?? 0;
-                        final currentProductId = product.id;
-
-                        // Check if the product has stock
-                        bool hasStock = currentStock > 0 || warehouseStock > 0;
-
-                        // Filter by productId
-                        if (_productIdController.text.isNotEmpty &&
-                            currentProductId != _productIdController.text.trim()) {
-                          return false;
+              child: _isLoadingCards
+                  ? Center(
+                      child:
+                          CircularProgressIndicator()) // Show loading indicator
+                  : StreamBuilder<QuerySnapshot>(
+                      stream: _productService.getProductsStream(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Center(child: CircularProgressIndicator());
                         }
 
-                        return productName
-                                .contains(_nameController.text.toLowerCase()) &&
-                            productBrand.contains(
-                                _brandController.text.toLowerCase()) &&
-                            productCategory.contains(
-                                _categoryController.text.toLowerCase()) &&
-                            (_storeNumber.isEmpty ||
-                                productStoreNumber ==
-                                    _storeNumber.toLowerCase()) &&
-                            hasStock;
-                      })
-                      .toList()
-                      .take(5)
-                      .toList(); // Limita a 5 produtos
+                        final allProducts = snapshot.data!.docs;
 
-                  return ListView.builder(
-                    padding: EdgeInsets.symmetric(vertical: 0),
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      final data = product.data() as Map<String, dynamic>;
+                        // Filter products
+                        final filteredProducts = allProducts
+                            .where((product) {
+                              final data =
+                                  product.data() as Map<String, dynamic>;
+                              final productName =
+                                  (data['name'] ?? "").toString().toLowerCase();
+                              final productBrand = (data['brand'] ?? "")
+                                  .toString()
+                                  .toLowerCase();
+                              final productCategory = (data['category'] ?? "")
+                                  .toString()
+                                  .toLowerCase();
+                              final productStoreNumber =
+                                  (data['storeNumber'] ?? "")
+                                      .toString()
+                                      .toLowerCase();
+                              final currentStock = data['stockCurrent'] ?? 0;
+                              final warehouseStock =
+                                  data['wareHouseStock'] ?? 0;
+                              final currentProductId = product.id;
 
-                      return Card(
-                        margin:
-                            EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        child: ListTile(
-                          leading: Container(
-                            margin: const EdgeInsets.all(4.0),
-                            width: 60,
-                            height: 60,
-                            color: Colors.grey[300],
-                            child: Center(
-                              child: BarcodeWidget(
-                                productId: data['productId'] ?? '',
-                              ),
-                            ),
-                          ),
-                          title: Text(data['name'] ?? "Without name"),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                  "Brand: ${data['brand'] ?? "Without brand"}"),
-                              Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: "Current Stock: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(
-                                      text: (data['stockCurrent'] ?? 0)
-                                          .toString(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              RichText(
-                                text: TextSpan(
-                                  style: DefaultTextStyle.of(context).style,
-                                  children: [
-                                    TextSpan(
-                                      text: "Warehouse Stock: ",
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold),
-                                    ),
-                                    TextSpan(
-                                      text: (data['wareHouseStock'] ?? 0)
-                                          .toString(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          onTap: () async {
-                            User? user = FirebaseAuth.instance.currentUser;
-                            if (user != null) {
-                              DocumentSnapshot userDoc = await _productService
-                                  .getUserDocument(user.uid);
-                              if (userDoc.exists) {
-                                String adminPermission =
-                                    userDoc['adminPermission'] ?? '';
-                                if (adminPermission == _storeNumber) {
-                                  _showBreakageDialog(context, product);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('No permission.')),
-                                  );
-                                }
+                              // Check if the product has stock
+                              bool hasStock =
+                                  currentStock > 0 || warehouseStock > 0;
+
+                              // Filter by productId
+                              if (_productIdController.text.isNotEmpty &&
+                                  currentProductId !=
+                                      _productIdController.text.trim()) {
+                                return false;
                               }
-                            }
+
+                              return productName.contains(
+                                      _nameController.text.toLowerCase()) &&
+                                  productBrand.contains(
+                                      _brandController.text.toLowerCase()) &&
+                                  productCategory.contains(
+                                      _categoryController.text.toLowerCase()) &&
+                                  (_storeNumber.isEmpty ||
+                                      productStoreNumber ==
+                                          _storeNumber.toLowerCase()) &&
+                                  hasStock;
+                            })
+                            .toList()
+                            .take(5)
+                            .toList(); // Limit to 5 products
+
+                        return ListView.builder(
+                          padding: EdgeInsets.symmetric(vertical: 0),
+                          itemCount: filteredProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = filteredProducts[index];
+                            final data = product.data() as Map<String, dynamic>;
+
+                            return Card(
+                              margin: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 16),
+                              child: ListTile(
+                                leading: Container(
+                                  margin: const EdgeInsets.all(4.0),
+                                  width: 60,
+                                  height: 60,
+                                  color: Colors.grey[300],
+                                  child: Center(
+                                    child: BarcodeWidget(
+                                      productId: data['productId'] ?? '',
+                                    ),
+                                  ),
+                                ),
+                                title: Text(data['name'] ?? "Without name"),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                        "Brand: ${data['brand'] ?? "Without brand"}"),
+                                    Text.rich(
+                                      TextSpan(
+                                        children: [
+                                          TextSpan(
+                                            text: "Current Stock: ",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          TextSpan(
+                                            text: (data['stockCurrent'] ?? 0)
+                                                .toString(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    RichText(
+                                      text: TextSpan(
+                                        style:
+                                            DefaultTextStyle.of(context).style,
+                                        children: [
+                                          TextSpan(
+                                            text: "Warehouse Stock: ",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          TextSpan(
+                                            text: (data['wareHouseStock'] ?? 0)
+                                                .toString(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () async {
+                                  User? user =
+                                      FirebaseAuth.instance.currentUser;
+                                  if (user != null) {
+                                    DocumentSnapshot userDoc =
+                                        await _productService
+                                            .getUserDocument(user.uid);
+                                    if (userDoc.exists) {
+                                      String adminPermission =
+                                          userDoc['adminPermission'] ?? '';
+                                      if (adminPermission == _storeNumber) {
+                                        _showBreakageDialog(context, product);
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text('No permission.')),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                              ),
+                            );
                           },
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                        );
+                      },
+                    ),
             )
           ],
         ),
@@ -306,7 +334,6 @@ class _ReturnPageState extends State<ReturnPage> {
                     Text("Warehouse Stock: $warehouseStock"),
                     SizedBox(height: 20),
 
-                    // Seleção de tipo de estoque
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -367,8 +394,9 @@ class _ReturnPageState extends State<ReturnPage> {
                           icon: Icon(Icons.add),
                           onPressed: () {
                             setState(() {
-                              if (_breakageQty < maxBreakageQty)
+                              if (_breakageQty < maxBreakageQty) {
                                 _breakageQty++; // Respeita o limite do estoque
+                              }
                             });
                           },
                         ),
@@ -384,33 +412,28 @@ class _ReturnPageState extends State<ReturnPage> {
                           onTap: () => Navigator.of(context).pop(),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.grey[100], // Cor do fundo
-                              borderRadius: BorderRadius.circular(
-                                  12), // Bordas arredondadas
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(12),
                               boxShadow: [
-                                // Sombra clara (parte superior)
                                 BoxShadow(
-                                  color: Colors.white, // Sombra clara
-                                  offset: Offset(-4, -4), // Direção da sombra
-                                  blurRadius: 6, // Difusão da sombra
+                                  color: Colors.white,
+                                  offset: Offset(-4, -4),
+                                  blurRadius: 6,
                                 ),
-                                // Sombra escura (parte inferior)
                                 BoxShadow(
-                                  color: Colors.black
-                                      .withOpacity(0.1), // Sombra escura
-                                  offset: Offset(4, 4), // Direção da sombra
-                                  blurRadius: 6, // Difusão da sombra
+                                  color: Colors.black.withOpacity(0.1),
+                                  offset: Offset(4, 4),
+                                  blurRadius: 6,
                                 ),
                               ],
                             ),
                             padding: EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 20), // Espaçamento interno
+                                vertical: 12, horizontal: 20),
                             child: Text(
                               'Cancel',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.black87, // Cor do texto
+                                color: Colors.black87,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -431,34 +454,28 @@ class _ReturnPageState extends State<ReturnPage> {
                           },
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors
-                                  .blue, // Cor do fundo (ajuste conforme necessário)
-                              borderRadius: BorderRadius.circular(
-                                  12), // Bordas arredondadas
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(12),
                               boxShadow: [
-                                // Sombra clara (parte superior)
                                 BoxShadow(
-                                  color: Colors.white, // Sombra clara
-                                  offset: Offset(-4, -4), // Direção da sombra
-                                  blurRadius: 6, // Difusão da sombra
+                                  color: Colors.white,
+                                  offset: Offset(-4, -4),
+                                  blurRadius: 6,
                                 ),
-                                // Sombra escura (parte inferior)
                                 BoxShadow(
-                                  color: Colors.black
-                                      .withOpacity(0.1), // Sombra escura
-                                  offset: Offset(4, 4), // Direção da sombra
-                                  blurRadius: 6, // Difusão da sombra
+                                  color: Colors.black.withOpacity(0.1),
+                                  offset: Offset(4, 4),
+                                  blurRadius: 6,
                                 ),
                               ],
                             ),
                             padding: EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 20), // Espaçamento interno
+                                vertical: 12, horizontal: 20),
                             child: Text(
                               'Save',
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.white, // Cor do texto
+                                color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -522,8 +539,8 @@ class _ReturnPageState extends State<ReturnPage> {
                     'timestamp': Timestamp.now(),
                   });
 
-                  Navigator.of(context).pop(); // Fecha a confirmação
-                  Navigator.of(context).pop(); // Fecha o diálogo principal
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop();
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Breakage recorded successfully")),

@@ -35,7 +35,8 @@ class GlassmorphicFilterForm extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.2),
+            border:
+                Border.all(color: Colors.white.withOpacity(0.3), width: 1.2),
             boxShadow: [
               BoxShadow(
                 color: Colors.white.withOpacity(0.05),
@@ -58,7 +59,9 @@ class GlassmorphicFilterForm extends StatelessWidget {
               _buildTextField(context, nameController, 'Name'),
               _buildTextField(context, brandController, 'Brand'),
               _buildTextField(context, categoryController, 'Category'),
-              _buildTextField(context, storeNumberController, 'Filter by store number', enabled: false),
+              _buildTextField(
+                  context, storeNumberController, 'Filter by store number',
+                  enabled: false),
               if (dropdownWidget != null) dropdownWidget!,
             ],
           ),
@@ -67,7 +70,9 @@ class GlassmorphicFilterForm extends StatelessWidget {
     );
   }
 
-  Widget _buildTextField(BuildContext context, TextEditingController controller, String label, {bool enabled = true}) {
+  Widget _buildTextField(
+      BuildContext context, TextEditingController controller, String label,
+      {bool enabled = true}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: TextField(
@@ -84,7 +89,8 @@ class GlassmorphicFilterForm extends StatelessWidget {
           focusedBorder: const OutlineInputBorder(
             borderSide: BorderSide(color: Colors.white, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 1.0, horizontal: 12.0),
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: 1.0, horizontal: 12.0),
           suffixIcon: label == 'Name'
               ? IconButton(
                   icon: const Icon(Icons.camera_alt, color: Colors.white),
@@ -96,7 +102,8 @@ class GlassmorphicFilterForm extends StatelessWidget {
                         builder: (context) => BarcodeScannerWidget(
                           onBarcodeScanned: (productId) {
                             if (onProductIdScanned != null) {
-                              onProductIdScanned!(productId); // Pass the productId to the parent
+                              onProductIdScanned!(
+                                  productId); // Pass the productId to the parent
                             }
                           },
                         ),

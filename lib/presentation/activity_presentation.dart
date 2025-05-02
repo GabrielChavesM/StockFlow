@@ -17,7 +17,8 @@ class LoginLogoutHistoryPage extends StatefulWidget {
 }
 
 class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
-  final ActivityService _activityService = ActivityService(ActivityRepository());
+  final ActivityService _activityService =
+      ActivityService(ActivityRepository());
   User? user;
   List<Map<String, dynamic>> _activityHistory = [];
   bool isLoading = true;
@@ -49,10 +50,12 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
     DateTime sevenDaysAgo = now.subtract(Duration(days: 7));
 
     try {
-      DocumentSnapshot userDoc = await _activityService.getUserDocument(user!.uid);
+      DocumentSnapshot userDoc =
+          await _activityService.getUserDocument(user!.uid);
       String userName = userDoc['name'] ?? 'No Name';
 
-      QuerySnapshot querySnapshot = await _activityService.getUserActivity(user!.uid, sevenDaysAgo);
+      QuerySnapshot querySnapshot =
+          await _activityService.getUserActivity(user!.uid, sevenDaysAgo);
 
       if (querySnapshot.docs.isNotEmpty) {
         Map<String, List<Map<String, dynamic>>> groupedActivities = {};
@@ -87,11 +90,13 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
 
           hasMarkedEntryToday = _activityHistory.any((dayEntry) =>
               dayEntry['date'] == todayKey &&
-              dayEntry['activities'].any((activity) => activity['action'] == 'Entry Marked'));
+              dayEntry['activities']
+                  .any((activity) => activity['action'] == 'Entry Marked'));
 
           hasMarkedExitToday = _activityHistory.any((dayEntry) =>
               dayEntry['date'] == todayKey &&
-              dayEntry['activities'].any((activity) => activity['action'] == 'Exit Marked'));
+              dayEntry['activities']
+                  .any((activity) => activity['action'] == 'Exit Marked'));
         });
       }
     } catch (e) {
@@ -148,13 +153,16 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true, // Permite que o AppBar fique sobre o fundo do Scaffold
+      extendBodyBehindAppBar:
+          true, // Permite que o AppBar fique sobre o fundo do Scaffold
       backgroundColor: Colors.transparent, // Fundo transparente
       appBar: AppBar(
-        title: Text('Entry and Exit Logger', style: TextStyle(color: Colors.white)),
+        title: Text('Entry and Exit Logger',
+            style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.grey), // Muda a cor do botão de voltar para branco
+        iconTheme: IconThemeData(
+            color: Colors.grey), // Muda a cor do botão de voltar para branco
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -178,25 +186,32 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
                         : ListView.builder(
                             itemCount: _activityHistory.length,
                             itemBuilder: (context, index) {
-                              String activityDate = _activityHistory[index]['date'];
-                              List<Map<String, dynamic>> activities = _activityHistory[index]['activities'];
+                              String activityDate =
+                                  _activityHistory[index]['date'];
+                              List<Map<String, dynamic>> activities =
+                                  _activityHistory[index]['activities'];
 
                               return Card(
-                                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                margin: EdgeInsets.symmetric(
+                                    vertical: 8, horizontal: 16),
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         '${DateFormat('EEEE, dd/MM/yyyy').format(DateTime.parse(activityDate))} - ${activities.isNotEmpty ? activities[0]['userName'] : ''}',
-                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                        style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold),
                                       ),
                                       SizedBox(height: 8),
                                       ...activities.map((activity) {
                                         return ListTile(
                                           title: Text(activity['action']),
-                                          subtitle: Text(DateFormat('HH:mm').format(activity['date'])),
+                                          subtitle: Text(DateFormat('HH:mm')
+                                              .format(activity['date'])),
                                         );
                                       }),
                                     ],
@@ -207,7 +222,8 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
                           ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10.0, vertical: 6),
                     child: GestureDetector(
                       onTap: hasMarkedEntryToday ? null : _markEntry,
                       child: Opacity(
@@ -233,11 +249,14 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10.0, vertical: 6),
                     child: GestureDetector(
                       onTap: hasMarkedExitToday ? null : _markExit,
                       child: Opacity(
-                        opacity: hasMarkedExitToday || !hasMarkedEntryToday ? 0.5 : 1.0,
+                        opacity: hasMarkedExitToday || !hasMarkedEntryToday
+                            ? 0.5
+                            : 1.0,
                         child: Container(
                           padding: EdgeInsets.all(20),
                           decoration: BoxDecoration(

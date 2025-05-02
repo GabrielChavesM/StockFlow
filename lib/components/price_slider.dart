@@ -13,13 +13,12 @@ class PriceRangeSlider extends StatefulWidget {
 
 class _PriceRangeSliderState extends State<PriceRangeSlider> {
   // Definindo os limites do intervalo de preços
-  RangeValues _priceRange = RangeValues(0, 1000); // Preço inicial entre 0 e 1000
+  RangeValues _priceRange = RangeValues(0, 1000);
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Título do Slider
         Padding(
           padding: const EdgeInsets.only(bottom: 8.0),
           child: Text(
@@ -27,13 +26,13 @@ class _PriceRangeSliderState extends State<PriceRangeSlider> {
             style: TextStyle(color: Colors.black),
           ),
         ),
-        
+
         // O RangeSlider com valores mínimos e máximos
         RangeSlider(
           values: _priceRange,
           min: 0,
-          max: 5000, // Máximo de preço (ajuste conforme sua necessidade)
-          divisions: 100, // Número de divisões entre o valor mínimo e máximo
+          max: 5000,
+          divisions: 100,
           labels: RangeLabels(
             _priceRange.start.round().toString(),
             _priceRange.end.round().toString(),
@@ -42,10 +41,11 @@ class _PriceRangeSliderState extends State<PriceRangeSlider> {
             setState(() {
               _priceRange = values; // Atualiza os valores ao mover o slider
             });
-            widget.onChanged(values); // Chama o callback para atualizar o valor no FilterPage
+            widget.onChanged(
+                values); // Chama o callback para atualizar o valor no FilterPage
           },
         ),
-        
+
         // Exibindo o intervalo de preços selecionado
         Padding(
           padding: const EdgeInsets.only(top: 8.0),
