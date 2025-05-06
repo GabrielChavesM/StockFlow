@@ -410,9 +410,23 @@ class _MapPageState extends State<MapPage> {
   Future<List<Map<String, dynamic>>> _fetchProductsByLocation(
       String location) async {
     try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
+      // Fetch the user's storeNumber
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
+
+      // Query products with the same storeNumber and location
       final querySnapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('productLocation', isEqualTo: location)
+          .where('storeNumber', isEqualTo: storeNumber)
           .get();
 
       return querySnapshot.docs
@@ -428,9 +442,23 @@ class _MapPageState extends State<MapPage> {
 
   Future<Map<String, dynamic>?> _fetchProductById(String productId) async {
     try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
+      // Fetch the user's storeNumber
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
+
+      // Query product with the same storeNumber and productId
       final querySnapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('productId', isEqualTo: productId)
+          .where('storeNumber', isEqualTo: storeNumber)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {

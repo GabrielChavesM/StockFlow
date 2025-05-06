@@ -1,5 +1,15 @@
 {
   "java.configuration.updateBuildConfiguration": "interactive",
   "java.project.explorer.showNonJavaResources": false,
-  "java.dependency.syncWithFolderExplorer": false
+  "java.dependency.syncWithFolderExplorer": false,
+  "editor.guides.indentation": true,
+  "editor.guides.highlightActiveIndentation": true,
+  "editor.lineHighlightBackground": "#00000010",
+  "editor.lineHighlightBorder": "#00000000",
+
+  // Make the inlune highlighted bar colorless visible
+  "workbench.colorCustomizations": {
+    // Make it the VSCode default color
+    "editor.lineHighlightBackground":"default",
+  }
 }

@@ -298,14 +298,13 @@ class _ReturnPageState extends State<ReturnPage> {
   void _showBreakageDialog(BuildContext context, DocumentSnapshot product) {
     final data = product.data() as Map<String, dynamic>;
 
-    String breakageType =
-        'stockCurrent'; // Tipo inicial padrão: Estoque de Loja
+    String breakageType = 'stockCurrent'; // Default type: Store Stock
 
-    // Obtendo o estoque disponível
+    // Get available stock
     int currentStock = data['stockCurrent'] ?? 0;
     int warehouseStock = data['wareHouseStock'] ?? 0;
 
-    // A quantidade máxima que pode ser selecionada será o estoque disponível
+    // Set the maximum breakage quantity based on the stock type
     int maxBreakageQty =
         (breakageType == 'stockCurrent') ? currentStock : warehouseStock;
 
@@ -326,14 +325,14 @@ class _ReturnPageState extends State<ReturnPage> {
                   children: [
                     Text(
                       "Product Breakage: ${data['name'] ?? "Without name"}",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 10),
                     Text("Store Stock: $currentStock"),
                     Text("Warehouse Stock: $warehouseStock"),
                     SizedBox(height: 20),
 
+                    // Radio buttons for selecting stock type
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -343,13 +342,12 @@ class _ReturnPageState extends State<ReturnPage> {
                           onChanged: (value) {
                             setState(() {
                               breakageType = value!;
-                              // Atualiza a quantidade máxima de quebra conforme o tipo de estoque
                               maxBreakageQty = (breakageType == 'stockCurrent')
                                   ? currentStock
                                   : warehouseStock;
                               if (_breakageQty > maxBreakageQty) {
                                 _breakageQty =
-                                    maxBreakageQty; // Ajusta a quantidade se necessário
+                                    maxBreakageQty; // Adjust quantity if necessary
                               }
                             });
                           },
@@ -361,13 +359,12 @@ class _ReturnPageState extends State<ReturnPage> {
                           onChanged: (value) {
                             setState(() {
                               breakageType = value!;
-                              // Atualiza a quantidade máxima de quebra conforme o tipo de estoque
                               maxBreakageQty = (breakageType == 'stockCurrent')
                                   ? currentStock
                                   : warehouseStock;
                               if (_breakageQty > maxBreakageQty) {
                                 _breakageQty =
-                                    maxBreakageQty; // Ajusta a quantidade se necessário
+                                    maxBreakageQty; // Adjust quantity if necessary
                               }
                             });
                           },
@@ -377,7 +374,7 @@ class _ReturnPageState extends State<ReturnPage> {
                     ),
                     SizedBox(height: 20),
 
-                    // Contador de quantidade de quebra
+                    // Breakage quantity counter
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -395,7 +392,7 @@ class _ReturnPageState extends State<ReturnPage> {
                           onPressed: () {
                             setState(() {
                               if (_breakageQty < maxBreakageQty) {
-                                _breakageQty++; // Respeita o limite do estoque
+                                _breakageQty++; // Respect stock limit
                               }
                             });
                           },
@@ -404,12 +401,17 @@ class _ReturnPageState extends State<ReturnPage> {
                     ),
                     SizedBox(height: 20),
 
-                    // Botões de Cancelar e Salvar
+                    // Cancel and Save buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
+                          onTap: () {
+                            setState(() {
+                              _breakageQty = 0; // Reset breakage quantity
+                            });
+                            Navigator.of(context).pop(); // Close the dialog
+                          },
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.grey[100],
@@ -490,7 +492,12 @@ class _ReturnPageState extends State<ReturnPage> {
           ),
         );
       },
-    );
+    ).then((_) {
+      // Reset _breakageQty when the dialog is dismissed
+      setState(() {
+        _breakageQty = 0;
+      });
+    });
   }
 
   void _showConfirmationDialog(
@@ -513,7 +520,20 @@ class _ReturnPageState extends State<ReturnPage> {
             ),
             TextButton(
               onPressed: () async {
-                // Estoque atual e nova quantidade
+                // Fetch the user's storeNumber
+                User? user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("User not logged in")),
+                  );
+                  return;
+                }
+
+                DocumentSnapshot userDoc =
+                    await _productService.getUserDocument(user.uid);
+                String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
+
+                // Current stock and new quantity
                 int currentStock = data[breakageType] ?? 0;
                 int newStock = currentStock - _breakageQty;
 
@@ -526,18 +546,38 @@ class _ReturnPageState extends State<ReturnPage> {
                 stockBreak += _breakageQty;
 
                 try {
+                  // Update product stock
                   await _productService.updateProductStock(product.id, {
                     breakageType: newStock,
                     breakageField: stockBreak,
                   });
 
-                  await _productService.addBreakageRecord({
-                    'productId': product.id,
-                    'productName': data['name'],
-                    'breakageQty': _breakageQty,
-                    'breakageType': breakageType,
-                    'timestamp': Timestamp.now(),
-                  });
+                  // Check if a breakage record already exists
+                  final breakageDocRef = FirebaseFirestore.instance
+                      .collection('breakages')
+                      .doc('${product.id}_$breakageType');
+
+                  final breakageDoc = await breakageDocRef.get();
+
+                  if (breakageDoc.exists) {
+                    // If the document exists, merge and sum the breakageQty
+                    final existingData =
+                        breakageDoc.data() as Map<String, dynamic>;
+                    final existingQty = existingData['breakageQty'] ?? 0;
+
+                    await breakageDocRef.set({
+                      'breakageQty': existingQty + _breakageQty, // Sum quantities
+                    }, SetOptions(merge: true));
+                  } else {
+                    // If the document does not exist, create a new one
+                    await breakageDocRef.set({
+                      'productId': product.id,
+                      'productName': data['name'],
+                      'breakageQty': _breakageQty,
+                      'breakageType': breakageType,
+                      'storeNumber': storeNumber,
+                    });
+                  }
 
                   Navigator.of(context).pop();
                   Navigator.of(context).pop();

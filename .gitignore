@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 ios/Runner/GoogleService-Info.plist
+.vscode/settings.json
+ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+.vscode/settings.json
