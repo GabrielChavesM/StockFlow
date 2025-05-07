@@ -14,7 +14,7 @@ class BarcodeScannerWidget extends StatelessWidget {
     bool isPopCalled = false; // Flag to prevent multiple pops
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Barcode Scanner'),
         backgroundColor: Colors.black,

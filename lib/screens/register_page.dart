@@ -2,6 +2,7 @@
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:stockflow/components/privacy_policy.dart';
 
 class ValidationUtils {
@@ -78,29 +79,35 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _showPrivacyPolicyDialog() {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       barrierDismissible: false, // Prevent closing the dialog by tapping outside
       builder: (context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Privacy Policy'),
-          content: SingleChildScrollView(
-            child: Text(PrivacyPolicy.privacyPolicyText),
+          content: Container(
+            height: 300, // Set a fixed height for the scrollable content
+            child: CupertinoScrollbar(
+              child: SingleChildScrollView(
+                child: Text(PrivacyPolicy.privacyPolicyText),
+              ),
+            ),
           ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () {
-                Navigator.of(context).pop(); // Closes the pop up window
+                Navigator.of(context).pop(); // Closes the pop-up window
                 widget.showLoginPage(); // Redirects to the login page
               },
               child: Text('I do not agree.'),
+              isDestructiveAction: true, // Highlight as a destructive action
             ),
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () {
                 setState(() {
                   _hasAcceptedPolicy = true;
                 });
-                Navigator.of(context).pop(); // Closes the pop up window
+                Navigator.of(context).pop(); // Closes the pop-up window
               },
               child: Text('I read it and agree.'),
             ),
@@ -121,40 +128,87 @@ class _RegisterPageState extends State<RegisterPage> {
   // Register a new user on the database
   Future<void> signUp() async {
     if (!_hasAcceptedPolicy) {
-      // Display message if user has not yet accepted the privacy policy
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please accept the Privacy Policy to continue.')),
+      // Show a Cupertino-style error pop-up if the user has not accepted the privacy policy
+      showCupertinoDialog(
+        context: context,
+        builder: (context) {
+          return CupertinoAlertDialog(
+            title: Text('Privacy Policy'),
+            content: Text('Please accept the Privacy Policy to continue.'),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
       );
       return;
     }
 
     if (passwordConfirmed()) {
       if (!isPasswordValid(_passwordController.text.trim())) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Password must be at least 8 characters long, include at least one uppercase letter, one number, and one special character.')),
+        // Show a Cupertino-style error pop-up for invalid password
+        showCupertinoDialog(
+          context: context,
+          builder: (context) {
+            return CupertinoAlertDialog(
+              title: Text('Invalid Password'),
+              content: Text(
+                'Password must be at least 8 characters long, include at least one uppercase letter, one number, and one special character.',
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
         );
         return;
       }
 
       try {
-        // Put the new user in the database
+        // Register the new user in Firebase
         await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
         );
 
-        // Verify if the user already verified the email, if verified it can login
+        // Verify if the user has verified their email
         User? user = FirebaseAuth.instance.currentUser;
         if (user != null && !user.emailVerified) {
           await user.sendEmailVerification();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Verification email sent! Please check your email before logging in.')),
+          showCupertinoDialog(
+            context: context,
+            builder: (context) {
+              return CupertinoAlertDialog(
+                title: Text('Verification Email Sent'),
+                content: Text(
+                  'A verification email has been sent! Please check your email before logging in.',
+                ),
+                actions: [
+                  CupertinoDialogAction(
+                    child: Text('OK'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      FirebaseAuth.instance.signOut();
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
+                  ),
+                ],
+              );
+            },
           );
-          await FirebaseAuth.instance.signOut();
-          Navigator.pushReplacementNamed(context, '/login');
         }
       } catch (e) {
-        // Catches and show specific errors to the user
+        // Handle Firebase-specific errors
         String errorMessage = 'An error occurred. Please check your connection and try again.';
         if (e is FirebaseAuthException) {
           switch (e.code) {
@@ -172,13 +226,44 @@ class _RegisterPageState extends State<RegisterPage> {
               break;
           }
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMessage)),
+
+        // Show a Cupertino-style error pop-up for Firebase errors
+        showCupertinoDialog(
+          context: context,
+          builder: (context) {
+            return CupertinoAlertDialog(
+              title: Text('Error'),
+              content: Text(errorMessage),
+              actions: [
+                CupertinoDialogAction(
+                  child: Text('OK'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
         );
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The passwords do not match.')),
+      // Show a Cupertino-style error pop-up for mismatched passwords
+      showCupertinoDialog(
+        context: context,
+        builder: (context) {
+          return CupertinoAlertDialog(
+            title: Text('Password Mismatch'),
+            content: Text('The passwords do not match.'),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        },
       );
     }
   }

@@ -123,8 +123,18 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
       return;
     }
 
+    setState(() {
+      isLoading = true; // Show loading indicator
+    });
+
+    await Future.delayed(Duration(milliseconds: 500)); // Add a 0.5-second delay
+
     await _activityService.logUserActivity(user!.uid, 'Entry Marked');
     await _fetchActivityHistory();
+
+    setState(() {
+      isLoading = false; // Hide loading indicator
+    });
   }
 
   Future<void> _markExit() async {
@@ -138,8 +148,18 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
       return;
     }
 
+    setState(() {
+      isLoading = true; // Show loading indicator
+    });
+
+    await Future.delayed(Duration(milliseconds: 500)); // Add a 0.5-second delay
+
     await _activityService.logUserActivity(user!.uid, 'Exit Marked');
     await _fetchActivityHistory();
+
+    setState(() {
+      isLoading = false; // Hide loading indicator
+    });
   }
 
   Color hexStringToColor(String hexColor) {
@@ -225,9 +245,9 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10.0, vertical: 6),
                     child: GestureDetector(
-                      onTap: hasMarkedEntryToday ? null : _markEntry,
+                      onTap: isLoading || hasMarkedEntryToday ? null : _markEntry,
                       child: Opacity(
-                        opacity: hasMarkedEntryToday ? 0.5 : 1.0,
+                        opacity: isLoading || hasMarkedEntryToday ? 0.5 : 1.0,
                         child: Container(
                           padding: EdgeInsets.all(20),
                           decoration: BoxDecoration(
@@ -235,14 +255,16 @@ class _LoginLogoutHistoryPageState extends State<LoginLogoutHistoryPage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
-                            child: Text(
-                              'Mark Entry',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
+                            child: isLoading
+                                ? CircularProgressIndicator(color: Colors.white)
+                                : Text(
+                                    'Mark Entry',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),

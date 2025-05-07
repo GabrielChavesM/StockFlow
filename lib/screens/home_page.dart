@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:stockflow/presentation/account_settings_presentation.dart';
 import 'package:stockflow/presentation/locations_presentation.dart';
 import 'package:stockflow/presentation/notifications_presentation.dart';
@@ -13,7 +14,6 @@ import 'package:stockflow/presentation/return_presentation.dart';
 import 'package:stockflow/presentation/stock_presentation.dart';
 import 'package:stockflow/presentation/warehouse_presentation.dart';
 import 'package:stockflow/screens/help_page.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _fetchUserName();
-    _initializeOptions();  // Inicializa as opções após o método initState
+    _initializeOptions(); // Inicializa as opções após o método initState
   }
 
   // Inicialize as opções com a referência ao método _updateUserName
@@ -157,25 +157,26 @@ class _HomePageState extends State<HomePage> {
                     return GestureDetector(
                       onTap: () {
                         if (options[index]['name'] == 'Sign Out') {
-                          showDialog(
+                          showCupertinoDialog(
                             context: context,
                             builder: (BuildContext context) {
-                              return AlertDialog(
+                              return CupertinoAlertDialog(
                                 title: Text('Sign Out'),
                                 content: Text('Are you sure you want to sign out?'),
                                 actions: <Widget>[
-                                  TextButton(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                    },
+                                  CupertinoDialogAction(
                                     child: Text('Cancel'),
+                                    onPressed: () {
+                                      Navigator.of(context).pop(); // Close the dialog
+                                    },
                                   ),
-                                  TextButton(
+                                  CupertinoDialogAction(
+                                    child: Text('Sign Out'),
+                                    isDestructiveAction: true, // Highlight as a destructive action
                                     onPressed: () {
                                       FirebaseAuth.instance.signOut();
-                                      Navigator.of(context).pop();
+                                      Navigator.of(context).pop(); // Close the dialog
                                     },
-                                    child: Text('Sign Out'),
                                   ),
                                 ],
                               );

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:stockflow/components/square_title.dart';
 import 'package:stockflow/screens/forgot_pw_page.dart';
 import 'package:stockflow/services/auth_service.dart';
@@ -112,14 +113,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Error'),
           content: Text(message),
           actions: <Widget>[
-            TextButton(
+            CupertinoDialogAction(
               child: Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
@@ -130,7 +131,6 @@ class _LoginPageState extends State<LoginPage> {
       },
     );
   }
-
 
   void _lockOutUser() {
     setState(() {
@@ -201,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    'You stock inventory application!',
+                    'Your stock inventory application!',
                     style: TextStyle(fontSize: 20),
                   ),
                   SizedBox(height: 5),
@@ -354,14 +354,14 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          showDialog(
+                          showCupertinoDialog(
                             context: context,
                             builder: (BuildContext context) {
-                              return AlertDialog(
+                              return CupertinoAlertDialog(
                                 title: Text('Support Email'),
                                 content: Text('For assistance, please contact: helpstockflow@gmail.com'),
                                 actions: [
-                                  TextButton(
+                                  CupertinoDialogAction(
                                     child: Text('Close'),
                                     onPressed: () {
                                       Navigator.of(context).pop();

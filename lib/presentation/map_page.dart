@@ -476,8 +476,8 @@ class _MapPageState extends State<MapPage> {
     if (!Platform.isAndroid && !Platform.isIOS) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content:
-                Text('Barcode scanning is not supported on this platform.')),
+          content: Text('Barcode scanning is not supported on this platform.'),
+        ),
       );
       return;
     }
@@ -494,7 +494,7 @@ class _MapPageState extends State<MapPage> {
               onDetect: (BarcodeCapture capture) {
                 final barcode = capture.barcodes.first;
                 if (barcode.rawValue != null) {
-                  Navigator.of(context).pop(barcode.rawValue);
+                  Navigator.of(context).pop(barcode.rawValue); // Return the scanned barcode
                 }
               },
             ),
@@ -503,11 +503,12 @@ class _MapPageState extends State<MapPage> {
       );
 
       if (barcode == null) {
-        return;
+        return; // No barcode scanned
       }
 
       _productIdController.text = barcode;
 
+      // Highlight the block by product ID
       await _highlightBlockByProductId();
     } catch (e) {
       if (kDebugMode) {

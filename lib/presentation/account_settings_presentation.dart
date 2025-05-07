@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:stockflow/components/privacy_policy.dart';
 import 'package:stockflow/data/account_settings_data.dart';
 import 'package:stockflow/domain/account_settings_domain.dart';
@@ -65,9 +66,41 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   Future<void> _sendPasswordResetEmail() async {
     try {
       await _userService.sendPasswordResetEmail();
-      _showAlert('Password reset link sent to $_email! Check your email.');
+      showCupertinoDialog(
+        context: context,
+        builder: (context) {
+          return CupertinoAlertDialog(
+            title: Text('Success'),
+            content: Text('Password reset link sent to $_email! Check your email.'),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close the dialog
+                },
+              ),
+            ],
+          );
+        },
+      );
     } on FirebaseAuthException catch (e) {
-      _showAlert(e.message.toString());
+      showCupertinoDialog(
+        context: context,
+        builder: (context) {
+          return CupertinoAlertDialog(
+            title: Text('Error'),
+            content: Text(e.message.toString()),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close the dialog
+                },
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
@@ -240,36 +273,37 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     _nameController.text = _name;
     _storeNumberController.text = _storeNumber;
 
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Set Your Name and Store Number'),
+        return CupertinoAlertDialog(
+          title: Text('Update Name or Store Number'),
           content: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
+              SizedBox(height: 16),
+              CupertinoTextField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Enter your name'),
+                placeholder: 'Enter your name',
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
-              TextField(
+              SizedBox(height: 16),
+              CupertinoTextField(
                 controller: _storeNumberController,
+                placeholder: 'Enter your store number',
                 keyboardType: TextInputType.number,
-                decoration:
-                    InputDecoration(labelText: 'Enter your store number'),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
             ],
           ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
-            TextButton(
-              child: Text(
-                'Save',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+            CupertinoDialogAction(
+              child: Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
               onPressed: () {
                 if ((_nameController.text.isNotEmpty &&
                         _nameController.text != _name) ||
@@ -291,7 +325,7 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                         ? _storeNumberController.text
                         : _storeNumber;
                   });
-                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(); // Close the dialog
                 } else {
                   _showAlert(
                       'Please fill in at least one field with a new value.');
@@ -305,24 +339,29 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _confirmPasswordReset(BuildContext context) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Confirm Password Reset'),
           content: Text(
-              'Are you sure you want to send a password reset link to $_email?'),
+            'Are you sure you want to send a password reset link to $_email?',
+          ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
-            TextButton(
-              child: Text('Send Reset Email',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+            CupertinoDialogAction(
+              child: Text(
+                'Send Reset Email',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               onPressed: () {
                 _sendPasswordResetEmail();
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the dialog
               },
             ),
           ],
@@ -332,18 +371,25 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _showPrivacyPolicyDialog(BuildContext context) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Privacy Policy'),
-          content: SingleChildScrollView(
-            child: Text(PrivacyPolicy.privacyPolicyText),
+          content: Container(
+            height: 300, // Set a fixed height for the scrollable content
+            child: CupertinoScrollbar(
+              child: SingleChildScrollView(
+                child: Text(PrivacyPolicy.privacyPolicyText),
+              ),
+            ),
           ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Close'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
           ],
         );
@@ -352,17 +398,18 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _showFeedbackDialog(BuildContext context) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Support Email'),
-          content:
-              Text('For assistance, please contact: helpstockflow@gmail.com'),
+          content: Text('For assistance, please contact: helpstockflow@gmail.com'),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Close'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
           ],
         );
@@ -374,45 +421,50 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
     final TextEditingController passwordController = TextEditingController();
     final TextEditingController emailController = TextEditingController();
 
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
         bool isGoogleSignIn = _userService.currentUser!.providerData
             .any((provider) => provider.providerId == "google.com");
 
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Account Deletion Confirmation'),
-          content: isGoogleSignIn
-              ? Text(
-                  'Since you are logged in with Google, simply confirm your account to delete it.')
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                        'Are you sure you want to remove your account? This action cannot be undone.'),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: emailController,
-                      decoration:
-                          InputDecoration(labelText: 'Re-enter your email'),
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration:
-                          InputDecoration(labelText: 'Enter your password'),
-                    ),
-                  ],
+          content: Column(
+            children: [
+              if (isGoogleSignIn)
+                Text(
+                  'Since you are logged in with Google, simply confirm your account to delete it.',
+                )
+              else ...[
+                Text(
+                  'Are you sure you want to remove your account? This action cannot be undone.',
                 ),
+                SizedBox(height: 16),
+                CupertinoTextField(
+                  controller: emailController,
+                  placeholder: 'Re-enter your email',
+                ),
+                SizedBox(height: 16),
+                CupertinoTextField(
+                  controller: passwordController,
+                  placeholder: 'Enter your password',
+                  obscureText: true,
+                ),
+              ],
+            ],
+          ),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
-            TextButton(
-              child: Text('Remove Account',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+            CupertinoDialogAction(
+              child: Text(
+                'Remove Account',
+                style: TextStyle(color: CupertinoColors.destructiveRed),
+              ),
               onPressed: () async {
                 if (isGoogleSignIn) {
                   try {
@@ -460,20 +512,24 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
   }
 
   void _confirmLogout(BuildContext context) {
-    showDialog(
+    showCupertinoDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Logout Confirmation'),
           content: Text('Are you sure you want to sign out?'),
           actions: [
-            TextButton(
+            CupertinoDialogAction(
               child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
             ),
-            TextButton(
-              child: Text('Sign Out',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+            CupertinoDialogAction(
+              child: Text(
+                'Sign Out',
+                style: TextStyle(color: CupertinoColors.destructiveRed),
+              ),
               onPressed: () {
                 _userService.signOut();
                 Navigator.of(context).pushAndRemoveUntil(
