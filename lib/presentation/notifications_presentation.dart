@@ -3,6 +3,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:stockflow/presentation/chat_page.dart';
 import '../domain/notifications_domain.dart';
 import '../data/notifications_data.dart';
 
@@ -20,6 +21,22 @@ class NotificationsPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.grey),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0), // Adjust the padding to move the icon left
+            child: IconButton(
+              icon: Icon(Icons.chat_bubble_outline, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatPage(), // Replace with your ChatPage widget
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
