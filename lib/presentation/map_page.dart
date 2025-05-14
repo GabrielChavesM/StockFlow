@@ -36,18 +36,18 @@ class _MapPageState extends State<MapPage> {
     return Scaffold(
       body: CupertinoPageScaffold(
         navigationBar: CupertinoNavigationBar(
-          middle: Text('Map View'),
+          middle: const Text('Map View'),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                child: Icon(CupertinoIcons.cloud_upload),
+                child: const Icon(CupertinoIcons.cloud_upload),
                 onPressed: _saveBlocksToFirebase,
               ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                child: Icon(CupertinoIcons.cloud_download),
+                child: const Icon(CupertinoIcons.cloud_download),
                 onPressed: _loadBlocksFromFirebase,
               ),
             ],
@@ -56,33 +56,7 @@ class _MapPageState extends State<MapPage> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: CupertinoTextField(
-                        controller: _productIdController,
-                        placeholder: 'Enter Product ID',
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.0, vertical: 12.0),
-                      ),
-                    ),
-                    SizedBox(width: 8.0),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: Icon(CupertinoIcons.search, size: 24),
-                      onPressed: _highlightBlockByProductId,
-                    ),
-                    SizedBox(width: 8.0),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: Icon(CupertinoIcons.camera, size: 24),
-                      onPressed: _scanBarcode,
-                    ),
-                  ],
-                ),
-              ),
+              _buildSearchBar(),
               Expanded(
                 child: InteractiveViewer(
                   boundaryMargin: const EdgeInsets.all(20),
@@ -91,23 +65,28 @@ class _MapPageState extends State<MapPage> {
                   child: Center(
                     child: GridView.builder(
                       shrinkWrap: true,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 30,
                       ),
                       itemCount: _matrix.length,
                       itemBuilder: (context, index) {
                         final block = _matrix[index];
+                        final isSelected = _isMoveMode && _selectedBlockIndex == index;
+
                         return GestureDetector(
                           onTap: () => _onBlockTapped(index),
                           child: Container(
                             margin: const EdgeInsets.all(0.5),
-                            color: block.color,
+                            color: isSelected
+                                ? Colors.blue // Highlight the selected block
+                                : block.color,
                             child: Center(
                               child: Text(
                                 block.name ?? '',
                                 style: const TextStyle(
-                                    color: Colors.white, fontSize: 8),
+                                  color: Colors.white,
+                                  fontSize: 8,
+                                ),
                               ),
                             ),
                           ),
@@ -124,15 +103,75 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: CupertinoTextField(
+              controller: _productIdController,
+              placeholder: 'Enter Product ID',
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+            ),
+          ),
+          const SizedBox(width: 8.0),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            child: const Icon(CupertinoIcons.search, size: 24),
+            onPressed: _highlightBlockByProductId,
+          ),
+          const SizedBox(width: 8.0),
+          CupertinoButton(
+            padding: EdgeInsets.zero,
+            child: const Icon(CupertinoIcons.camera, size: 24),
+            onPressed: _scanBarcode,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onBlockTapped(int index) async {
     final block = _matrix[index];
-    _nameController.text = block.name ?? '';
 
-    // Fetch products for the block's location
+    if (_isMoveMode) {
+      _handleMoveMode(index, block);
+    } else {
+      await _showBlockConfigurationDialog(index, block);
+    }
+  }
+
+  void _handleMoveMode(int index, Block block) {
+    if (_selectedBlockIndex != null && _selectedBlockIndex != index) {
+      if (block.name == null) {
+        setState(() {
+          // Move the block to the new index
+          _matrix[index] = Block(
+            color: _matrix[_selectedBlockIndex!].color,
+            name: _matrix[_selectedBlockIndex!].name,
+          );
+          // Reset the old block
+          _matrix[_selectedBlockIndex!] = Block(color: Colors.grey, name: null);
+          _isMoveMode = false; // Exit move mode
+          _selectedBlockIndex = null; // Clear the selected block
+        });
+        _showSnackBar('Block moved successfully!');
+      } else {
+        _showSnackBar('Cannot move block to an occupied space.');
+      }
+    } else {
+      _showSnackBar('Invalid move. Please select a valid block.');
+    }
+  }
+
+  Future<void> _showBlockConfigurationDialog(int index, Block block) async {
     List<Map<String, dynamic>> products = [];
     if (block.name != null && block.name!.isNotEmpty) {
       products = await _fetchProductsByLocation(block.name!);
     }
+
+    _nameController.text = block.name ?? '';
 
     showCupertinoDialog(
       context: context,
@@ -140,7 +179,7 @@ class _MapPageState extends State<MapPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return CupertinoAlertDialog(
-              title: Text('Configure Block'),
+              title: const Text('Configure Block'),
               content: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
                 height: MediaQuery.of(context).size.height * 0.5,
@@ -150,11 +189,11 @@ class _MapPageState extends State<MapPage> {
                       controller: _nameController,
                       placeholder: 'Enter block name',
                     ),
-                    SizedBox(height: 16.0),
+                    const SizedBox(height: 16.0),
                     if (products.isNotEmpty) ...[
-                      Text('Products in this block:',
+                      const Text('Products in this block:',
                           style: TextStyle(fontWeight: FontWeight.bold)),
-                      SizedBox(height: 8.0),
+                      const SizedBox(height: 8.0),
                       Expanded(
                         child: CupertinoScrollbar(
                           child: ListView.builder(
@@ -165,13 +204,10 @@ class _MapPageState extends State<MapPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Name: ${product['name'] ?? 'Unknown'}'),
-                                  Text(
-                                      'Brand: ${product['brand'] ?? 'Unknown'}'),
-                                  Text(
-                                      'Category: ${product['category'] ?? 'Unknown'}'),
-                                  Text(
-                                      'Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
-                                  Divider(),
+                                  Text('Brand: ${product['brand'] ?? 'Unknown'}'),
+                                  Text('Category: ${product['category'] ?? 'Unknown'}'),
+                                  Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                                  const Divider(),
                                 ],
                               );
                             },
@@ -179,51 +215,49 @@ class _MapPageState extends State<MapPage> {
                         ),
                       ),
                     ] else
-                      Text('No products found in this block.'),
-                    SizedBox(height: 16.0),
-                    CupertinoButton(
-                      child: Text('Move Block'),
-                      onPressed: () {
-                        setState(() {
-                          _isMoveMode = true; // Enter move mode
-                          _selectedBlockIndex =
-                              index; // Store the index of the block being moved
-                        });
-                        Navigator.of(context).pop(); // Close the dialog
-                      },
-                    ),
-                    SizedBox(height: 8.0),
-                    CupertinoButton(
-                      child: Text('Delete Block',
-                          style:
-                              TextStyle(color: CupertinoColors.destructiveRed)),
-                      onPressed: () {
-                        setState(() {
-                          // Reset the block to its default state
-                          block.name = null;
-                          block.color = Colors.grey;
-                        });
-                        Navigator.of(context).pop(); // Close the dialog
-                      },
-                    ),
+                      const Text('No products found in this block.'),
                   ],
                 ),
               ),
               actions: [
                 CupertinoDialogAction(
-                  child: Text('Cancel'),
+                  child: const Text('Move Block'),
                   onPressed: () {
+                    setState(() {
+                      _isMoveMode = true; // Enable move mode
+                      _selectedBlockIndex = index; // Set the selected block
+                    });
+                    Navigator.of(context).pop(); // Close the dialog
+                    _showSnackBar('Select an empty space to move the block.');
+                  },
+                ),
+                CupertinoDialogAction(
+                  child: const Text('Delete Block',
+                      style: TextStyle(color: CupertinoColors.destructiveRed)),
+                  onPressed: () {
+                    setState(() {
+                      block.name = null;
+                      block.color = Colors.grey;
+                    });
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                ),
+                CupertinoDialogAction(
+                  child: const Text('Save',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: CupertinoColors.activeBlue)),
+                  onPressed: () {
+                    setState(() {
+                      block.name = _nameController.text;
+                      block.color = Colors.brown; // Indicate the block is occupied
+                    });
                     Navigator.of(context).pop();
                   },
                 ),
                 CupertinoDialogAction(
-                  child: Text('Save'),
+                  child: const Text('Cancel'),
                   onPressed: () {
-                    setState(() {
-                      block.name = _nameController.text;
-                      block.color = Colors
-                          .brown; // Update block color to indicate it's occupied
-                    });
                     Navigator.of(context).pop();
                   },
                 ),
@@ -235,72 +269,14 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<int?> _showMoveBlockDialog(int currentIndex) async {
-    final TextEditingController _rowController = TextEditingController();
-    final TextEditingController _colController = TextEditingController();
-
-    return showCupertinoDialog<int>(
-      context: context,
-      builder: (context) {
-        return CupertinoAlertDialog(
-          title: Text('Move Block'),
-          content: Column(
-            children: [
-              CupertinoTextField(
-                controller: _rowController,
-                placeholder: 'Enter row (0-29)',
-                keyboardType: TextInputType.number,
-              ),
-              SizedBox(height: 8.0),
-              CupertinoTextField(
-                controller: _colController,
-                placeholder: 'Enter column (0-29)',
-                keyboardType: TextInputType.number,
-              ),
-            ],
-          ),
-          actions: [
-            CupertinoDialogAction(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-            CupertinoDialogAction(
-              child: Text('Move'),
-              onPressed: () {
-                final row = int.tryParse(_rowController.text);
-                final col = int.tryParse(_colController.text);
-
-                if (row != null &&
-                    col != null &&
-                    row >= 0 &&
-                    row < 30 &&
-                    col >= 0 &&
-                    col < 30) {
-                  final newIndex = row * 30 + col;
-                  Navigator.of(context).pop(newIndex);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Invalid row or column. Please enter values between 0 and 29.')),
-                  );
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _saveBlocksToFirebase() async {
+  Future<List<Map<String, dynamic>>> _fetchProductsByLocation(String location) async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("User not logged in");
-      }
+      if (user == null) throw Exception("User not logged in");
 
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -308,121 +284,6 @@ class _MapPageState extends State<MapPage> {
           .get();
       String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
 
-      final blocksWithData = _matrix
-          .asMap()
-          .entries
-          .where((entry) =>
-              entry.value.name != null || entry.value.color != Colors.grey)
-          .map((entry) {
-        final index = entry.key;
-        final row = index ~/ 30;
-        final col = index % 30;
-        return {
-          'row': row,
-          'col': col,
-          'name': entry.value.name,
-          'color': entry.value.color.value,
-        };
-      }).toList();
-
-      await FirebaseFirestore.instance.collection('maps').doc(storeNumber).set({
-        'storeNumber': storeNumber,
-        'blocks': blocksWithData,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Map saved successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving map: $e')),
-      );
-    }
-  }
-
-  Future<void> _loadBlocksFromFirebase() async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("User not logged in");
-      }
-
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
-
-      DocumentSnapshot mapDoc = await FirebaseFirestore.instance
-          .collection('maps')
-          .doc(storeNumber)
-          .get();
-
-      if (!mapDoc.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No saved map found for this store.')),
-        );
-        return;
-      }
-
-      final blocks = List<Map<String, dynamic>>.from(mapDoc['blocks'] ?? []);
-
-      setState(() {
-        for (var blockData in blocks) {
-          final row = blockData['row'];
-          final col = blockData['col'];
-          final index = row * 30 + col;
-          _matrix[index] = Block(
-            color: Color(blockData['color']),
-            name: blockData['name'],
-          );
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Map loaded successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading map: $e')),
-      );
-    }
-  }
-
-  Future<Map<String, dynamic>?> _fetchProductByLocation(String location) async {
-    try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('products')
-          .where('productLocation', isEqualTo: location)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first.data() as Map<String, dynamic>;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching product: $e');
-      }
-    }
-    return null;
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchProductsByLocation(
-      String location) async {
-    try {
-      User? user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception("User not logged in");
-      }
-
-      // Fetch the user's storeNumber
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
-
-      // Query products with the same storeNumber and location
       final querySnapshot = await FirebaseFirestore.instance
           .collection('products')
           .where('productLocation', isEqualTo: location)
@@ -433,10 +294,69 @@ class _MapPageState extends State<MapPage> {
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
     } catch (e) {
-      if (kDebugMode) {
-        print('Error fetching products: $e');
-      }
+      if (kDebugMode) print('Error fetching products: $e');
       return [];
+    }
+  }
+
+  Future<void> _highlightBlockByProductId() async {
+    final productId = _productIdController.text.trim();
+    if (productId.isEmpty) {
+      _showSnackBar('Please enter a Product ID.');
+      return;
+    }
+
+    try {
+      final product = await _fetchProductById(productId);
+
+      if (product != null) {
+        final productLocation = product['productLocation'];
+
+        final blockIndex =
+            _matrix.indexWhere((block) => block.name == productLocation);
+
+        if (blockIndex != -1) {
+          setState(() {
+            for (var block in _matrix) {
+              block.color = block.name == null ? Colors.grey : Colors.brown;
+            }
+            _matrix[blockIndex].color = Colors.yellow;
+          });
+
+          showCupertinoDialog(
+            context: context,
+            builder: (context) {
+              return CupertinoAlertDialog(
+                title: const Text('Product Found'),
+                content: Column(
+                  children: [
+                    Text('Name: ${product['name'] ?? 'Unknown'}'),
+                    Text('Brand: ${product['brand'] ?? 'Unknown'}'),
+                    Text('Category: ${product['category'] ?? 'Unknown'}'),
+                    Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                    Text('Location: ${product['productLocation'] ?? 'Unknown'}'),
+                  ],
+                ),
+                actions: [
+                  CupertinoDialogAction(
+                    child: const Text('Close'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          _showSnackBar('No block found for this product location.');
+        }
+      } else {
+        _showSnackBar('No product found for this Product ID.');
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error searching for product: $e');
+      _showSnackBar('Error searching for product: $e');
     }
   }
 
@@ -476,8 +396,8 @@ class _MapPageState extends State<MapPage> {
     if (!Platform.isAndroid && !Platform.isIOS) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Barcode scanning is not supported on this platform.'),
-        ),
+            content:
+                Text('Barcode scanning is not supported on this platform.')),
       );
       return;
     }
@@ -494,7 +414,7 @@ class _MapPageState extends State<MapPage> {
               onDetect: (BarcodeCapture capture) {
                 final barcode = capture.barcodes.first;
                 if (barcode.rawValue != null) {
-                  Navigator.of(context).pop(barcode.rawValue); // Return the scanned barcode
+                  Navigator.of(context).pop(barcode.rawValue);
                 }
               },
             ),
@@ -503,12 +423,11 @@ class _MapPageState extends State<MapPage> {
       );
 
       if (barcode == null) {
-        return; // No barcode scanned
+        return;
       }
 
       _productIdController.text = barcode;
 
-      // Highlight the block by product ID
       await _highlightBlockByProductId();
     } catch (e) {
       if (kDebugMode) {
@@ -520,81 +439,87 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  Future<void> _highlightBlockByProductId() async {
-    final productId = _productIdController.text.trim();
-    if (productId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a Product ID.')),
-      );
-      return;
-    }
-
+  Future<void> _saveBlocksToFirebase() async {
     try {
-      final product = await _fetchProductById(productId);
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
 
-      if (product != null) {
-        final productLocation = product['productLocation'];
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
 
-        final blockIndex =
-            _matrix.indexWhere((block) => block.name == productLocation);
+      final blocksWithData = _matrix
+          .asMap()
+          .entries
+          .where((entry) =>
+              entry.value.name != null || entry.value.color != Colors.grey)
+          .map((entry) {
+        final index = entry.key;
+        final row = index ~/ 30;
+        final col = index % 30;
+        return {
+          'row': row,
+          'col': col,
+          'name': entry.value.name,
+          'color': entry.value.color.value,
+        };
+      }).toList();
 
-        if (blockIndex != -1) {
-          setState(() {
-            for (var block in _matrix) {
-              if (block.name == null) {
-                block.color = Colors.grey;
-              } else {
-                block.color = Colors.brown;
-              }
-            }
+      await FirebaseFirestore.instance.collection('maps').doc(storeNumber).set({
+        'storeNumber': storeNumber,
+        'blocks': blocksWithData,
+      });
 
-            _matrix[blockIndex].color = Colors.yellow;
-          });
+      _showSnackBar('Map saved successfully!');
+    } catch (e) {
+      _showSnackBar('Error saving map: $e');
+    }
+  }
 
-          showCupertinoDialog(
-            context: context,
-            builder: (context) {
-              return CupertinoAlertDialog(
-                title: Text('Product Found'),
-                content: Column(
-                  children: [
-                    Text('Name: ${product['name'] ?? 'Unknown'}'),
-                    Text('Brand: ${product['brand'] ?? 'Unknown'}'),
-                    Text('Category: ${product['category'] ?? 'Unknown'}'),
-                    Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
-                    Text(
-                        'Location: ${product['productLocation'] ?? 'Unknown'}'),
-                  ],
-                ),
-                actions: [
-                  CupertinoDialogAction(
-                    child: Text('Close'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              );
-            },
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('No block found for this product location.')),
+  Future<void> _loadBlocksFromFirebase() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
+
+      DocumentSnapshot mapDoc = await FirebaseFirestore.instance
+          .collection('maps')
+          .doc(storeNumber)
+          .get();
+
+      if (!mapDoc.exists) {
+        _showSnackBar('No saved map found for this store.');
+        return;
+      }
+
+      final blocks = List<Map<String, dynamic>>.from(mapDoc['blocks'] ?? []);
+
+      setState(() {
+        for (var blockData in blocks) {
+          final row = blockData['row'];
+          final col = blockData['col'];
+          final index = row * 30 + col;
+          _matrix[index] = Block(
+            color: Color(blockData['color']),
+            name: blockData['name'],
           );
         }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No product found for this Product ID.')),
-        );
-      }
+      });
+
+      _showSnackBar('Map loaded successfully!');
     } catch (e) {
-      if (kDebugMode) {
-        print('Error searching for product: $e');
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error searching for product: $e')),
-      );
+      _showSnackBar('Error loading map: $e');
     }
   }
 }
