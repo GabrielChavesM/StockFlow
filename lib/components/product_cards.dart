@@ -77,22 +77,42 @@ class _ProductCardsState extends State<ProductCards> {
               final product = limitedProducts[index];
               final data = product.data() as Map<String, dynamic>;
 
+              // Detecta se o produto tem desconto ativo
+              final hasDiscount = (data['discountPercent'] != null && data['discountPercent'] > 0) &&
+                  (data['endDate'] != null && (data['endDate'] as Timestamp).toDate().isAfter(DateTime.now()));
+
+              // Calcula preço antigo e novo
+              final double vatPrice = (data['vatPrice'] is num) ? data['vatPrice'].toDouble() : 0.0;
+              final double discountPercent = hasDiscount ? data['discountPercent'].toDouble() : 0.0;
+              final double discountedPrice = hasDiscount ? vatPrice / (1 - discountPercent / 100) : vatPrice;
+
               return Card(
                 margin: const EdgeInsets.symmetric(vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: hasDiscount
+                      ? BorderSide(color: Colors.redAccent.shade400, width: 2)
+                      : BorderSide(color: Colors.transparent),
+                ),
+                elevation: hasDiscount ? 6 : 2,
                 child: InkWell(
                   onTap: () => widget.onProductTap(context, data),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
+                        color: hasDiscount
+                            ? Colors.redAccent.withOpacity(0.1)
+                            : Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color.fromARGB(30, 240, 250, 255)
-                                .withOpacity(0.6),
-                            blurRadius: 5,
-                            spreadRadius: 1,
+                            color: hasDiscount
+                                ? Colors.redAccent.withOpacity(0.3)
+                                : const Color.fromARGB(30, 240, 250, 255)
+                                    .withOpacity(0.6),
+                            blurRadius: hasDiscount ? 10 : 5,
+                            spreadRadius: hasDiscount ? 3 : 1,
                           ),
                         ],
                       ),
@@ -118,8 +138,12 @@ class _ProductCardsState extends State<ProductCards> {
                                   children: [
                                     Text(
                                       data['name'] ?? "Sem nome",
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: hasDiscount
+                                            ? Colors.redAccent.shade700
+                                            : null,
+                                      ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
@@ -154,14 +178,38 @@ class _ProductCardsState extends State<ProductCards> {
                               Container(
                                 alignment: Alignment.centerRight,
                                 padding: const EdgeInsets.only(left: 12),
-                                child: Text(
-                                  "€ ${data['vatPrice']?.toStringAsFixed(2) ?? "0.00"}  ",
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
+                                child: hasDiscount
+                                    ? Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            "€ ${discountedPrice.toStringAsFixed(2)}",
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 14,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "€ ${vatPrice.toStringAsFixed(2)}",
+                                            style: const TextStyle(
+                                              color: Colors.redAccent,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Text(
+                                        "€ ${vatPrice.toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          color: Colors.green,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
                               ),
                             ],
                           ),
