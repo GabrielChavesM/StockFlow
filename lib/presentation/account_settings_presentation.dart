@@ -349,18 +349,18 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
           ),
           actions: [
             CupertinoDialogAction(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-            CupertinoDialogAction(
               child: Text(
                 'Send Reset Email',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               onPressed: () {
                 _sendPasswordResetEmail();
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+            CupertinoDialogAction(
+              child: Text('Cancel'),
+              onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
               },
             ),
@@ -455,12 +455,6 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
           ),
           actions: [
             CupertinoDialogAction(
-              child: Text('Cancel'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-            CupertinoDialogAction(
               child: Text(
                 'Remove Account',
                 style: TextStyle(color: CupertinoColors.destructiveRed),
@@ -503,6 +497,12 @@ class _AccountSettingsPageState extends State<AccountSettingsPage> {
                     }
                   }
                 }
+              },
+            ),
+            CupertinoDialogAction(
+              child: Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
               },
             ),
           ],

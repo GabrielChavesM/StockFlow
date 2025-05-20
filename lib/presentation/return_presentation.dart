@@ -294,7 +294,8 @@ class _ReturnPageState extends State<ReturnPage> {
     );
   }
 
-  // Método para converter string hexadecimal em cor
+  // Function to show the breakage dialog
+  // This function is called when the user taps on a product card
   void _showBreakageDialog(BuildContext context, DocumentSnapshot product) {
     final data = product.data() as Map<String, dynamic>;
 
@@ -313,7 +314,7 @@ class _ReturnPageState extends State<ReturnPage> {
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10.0),
+            borderRadius: BorderRadius.circular(25.0),
           ),
           child: StatefulBuilder(
             builder: (context, setState) {
@@ -324,12 +325,24 @@ class _ReturnPageState extends State<ReturnPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Product Breakage: ${data['name'] ?? "Without name"}",
+                      // Center the title
+                      "Product Breakage:\n ${data['name'] ?? "Without name"}",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center
                     ),
-                    SizedBox(height: 10),
-                    Text("Store Stock: $currentStock"),
-                    Text("Warehouse Stock: $warehouseStock"),
+                    SizedBox(height: 20),
+                    Text(
+                      "Store Stock: $currentStock",
+                      style: TextStyle(
+                        fontWeight: breakageType == 'stockCurrent' ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                    Text(
+                      "Warehouse Stock: $warehouseStock",
+                      style: TextStyle(
+                        fontWeight: breakageType == 'wareHouseStock' ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
                     SizedBox(height: 20),
 
                     // Radio buttons for selecting stock type

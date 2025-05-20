@@ -55,7 +55,7 @@ class _HomePageState extends State<HomePage> {
       {'name': 'Stock Locations', 'icon': Icons.business, 'page': LocationsPage()},
       {'name': 'Warehouse Stock', 'icon': Icons.local_shipping, 'page': WarehouseFilteredPage()},
       {'name': 'Stock Brakes', 'icon': Icons.remove_shopping_cart, 'page': ReturnPage()},
-      {'name': 'Notifications & Alerts', 'icon': Icons.notifications, 'page': NotificationsPage()},
+      {'name': 'Notifications & Messages', 'icon': Icons.notifications, 'page': NotificationsPage()},
       {'name': 'Account Settings', 'icon': Icons.settings, 'page': AccountSettingsPage(onNameChanged: _updateUserName)},
       {'name': 'Help', 'icon': Icons.help, 'page': HelpPage()},
       {'name': 'Sign Out', 'icon': Icons.logout, 'page': null},

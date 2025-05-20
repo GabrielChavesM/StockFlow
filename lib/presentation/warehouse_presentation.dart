@@ -145,9 +145,13 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
       context: context,
       builder: (BuildContext context) {
         return CupertinoAlertDialog(
-          title: Text("Edit Location"),
+          title: Text("Edit Warehouse Location"),
           content: Column(
             children: [
+              Text(
+                "Change location for ${data['name'] ?? "Sem nome"}",
+                style: TextStyle(fontSize: 18),
+              ),
               SizedBox(height: 12),
               CupertinoTextField(
                 controller: locationController,

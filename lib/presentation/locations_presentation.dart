@@ -126,6 +126,7 @@ class _LocationsPageState extends State<LocationsPage> {
         iconTheme: IconThemeData(color: Colors.grey),
         actions: [
           IconButton(
+            padding: const EdgeInsets.only(right: 6.0), // Adjust the padding to move the icon left
             icon: Icon(Icons.map, color: Colors.white), // Add map icon
             onPressed: () {
               _onMapIconPressed(); // Call the map icon handler
@@ -344,9 +345,13 @@ class _LocationsPageState extends State<LocationsPage> {
       context: context,
       builder: (BuildContext context) {
         return CupertinoAlertDialog(
-          title: Text("Edit Location"),
+          title: Text("Edit Store Location"),
           content: Column(
             children: [
+              Text(
+                "Change location for ${data['name'] ?? "Sem nome"}",
+                style: TextStyle(fontSize: 18),
+              ),
               SizedBox(height: 12),
               CupertinoTextField(
                 controller: locationController,

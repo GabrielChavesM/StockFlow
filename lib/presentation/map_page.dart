@@ -1,5 +1,7 @@
 // ignore_for_file: unused_element, unnecessary_cast, unused_field, use_key_in_widget_constructors, library_private_types_in_public_api, sort_child_properties_last, no_leading_underscores_for_local_identifiers, deprecated_member_use
 
+import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,9 +16,10 @@ class MapPage extends StatefulWidget {
 }
 
 class _MapPageState extends State<MapPage> {
+  // A 30x30 grid of shelfs, each represented by a Block object
   final List<Block> _matrix = List.generate(
     30 * 30,
-    (index) => Block(color: Colors.grey, name: null),
+    (index) => Block(color: Colors.white30, name: null),
   );
 
   final TextEditingController _nameController = TextEditingController();
@@ -31,23 +34,40 @@ class _MapPageState extends State<MapPage> {
     _loadBlocksFromFirebase();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: CupertinoPageScaffold(
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            hexStringToColor("CB2B93"),
+            hexStringToColor("9546C4"),
+            hexStringToColor("5E61F4"),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: CupertinoPageScaffold(
+        backgroundColor: Colors.transparent, // Important: transparent to see the gradient
         navigationBar: CupertinoNavigationBar(
-          middle: const Text('Map View'),
+          middle: const Text('Map View',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+              )),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                child: const Icon(CupertinoIcons.cloud_upload),
+                child: const Icon(CupertinoIcons.cloud_upload, color: Colors.white),
                 onPressed: _saveBlocksToFirebase,
               ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
-                child: const Icon(CupertinoIcons.cloud_download),
+                child: const Icon(CupertinoIcons.cloud_download, color: Colors.white),
                 onPressed: _loadBlocksFromFirebase,
               ),
             ],
@@ -63,35 +83,50 @@ class _MapPageState extends State<MapPage> {
                   minScale: 0.5,
                   maxScale: 5.0,
                   child: Center(
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 30,
-                      ),
-                      itemCount: _matrix.length,
-                      itemBuilder: (context, index) {
-                        final block = _matrix[index];
-                        final isSelected = _isMoveMode && _selectedBlockIndex == index;
-
-                        return GestureDetector(
-                          onTap: () => _onBlockTapped(index),
-                          child: Container(
-                            margin: const EdgeInsets.all(0.5),
-                            color: isSelected
-                                ? Colors.blue // Highlight the selected block
-                                : block.color,
-                            child: Center(
-                              child: Text(
-                                block.name ?? '',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
-                                ),
-                              ),
-                            ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(32.0),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                        child: Container(
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(32.0),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
-                        );
-                      },
+                          child: GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 30,
+                            ),
+                            itemCount: _matrix.length,
+                            itemBuilder: (context, index) {
+                              final block = _matrix[index];
+                              final isSelected = _isMoveMode && _selectedBlockIndex == index;
+
+                              return GestureDetector(
+                                onTap: () => _onBlockTapped(index),
+                                child: Container(
+                                  margin: const EdgeInsets.all(0.5),
+                                  color: isSelected
+                                      ? Colors.blue
+                                      : block.color,
+                                  child: Center(
+                                    child: Text(
+                                      block.name ?? '',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -100,8 +135,10 @@ class _MapPageState extends State<MapPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildSearchBar() {
     return Padding(
@@ -113,18 +150,29 @@ class _MapPageState extends State<MapPage> {
               controller: _productIdController,
               placeholder: 'Enter Product ID',
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 12.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1), // lower opacity
+                borderRadius: BorderRadius.circular(12.0),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              style: const TextStyle(
+                color: Colors.white, // text color
+              ),
+              placeholderStyle: TextStyle(
+                color: Colors.white.withOpacity(0.6), // placeholder color
+              ),
             ),
           ),
           const SizedBox(width: 8.0),
           CupertinoButton(
             padding: EdgeInsets.zero,
-            child: const Icon(CupertinoIcons.search, size: 24),
+            child: const Icon(CupertinoIcons.search, size: 24, color: Colors.white),
             onPressed: _highlightBlockByProductId,
           ),
           const SizedBox(width: 8.0),
           CupertinoButton(
             padding: EdgeInsets.zero,
-            child: const Icon(CupertinoIcons.camera, size: 24),
+            child: const Icon(CupertinoIcons.camera, size: 24, color: Colors.white),
             onPressed: _scanBarcode,
           ),
         ],
@@ -152,7 +200,7 @@ class _MapPageState extends State<MapPage> {
             name: _matrix[_selectedBlockIndex!].name,
           );
           // Reset the old block
-          _matrix[_selectedBlockIndex!] = Block(color: Colors.grey, name: null);
+          _matrix[_selectedBlockIndex!] = Block(color: Colors.white30, name: null);
           _isMoveMode = false; // Exit move mode
           _selectedBlockIndex = null; // Clear the selected block
         });
@@ -237,7 +285,7 @@ class _MapPageState extends State<MapPage> {
                   onPressed: () {
                     setState(() {
                       block.name = null;
-                      block.color = Colors.grey;
+                      block.color = Colors.white30;
                     });
                     Navigator.of(context).pop(); // Close the dialog
                   },
@@ -318,7 +366,7 @@ class _MapPageState extends State<MapPage> {
         if (blockIndex != -1) {
           setState(() {
             for (var block in _matrix) {
-              block.color = block.name == null ? Colors.grey : Colors.brown;
+              block.color = block.name == null ? Colors.white30 : Colors.brown;
             }
             _matrix[blockIndex].color = Colors.yellow;
           });
@@ -456,7 +504,7 @@ class _MapPageState extends State<MapPage> {
           .asMap()
           .entries
           .where((entry) =>
-              entry.value.name != null || entry.value.color != Colors.grey)
+              entry.value.name != null || entry.value.color != Colors.white30)
           .map((entry) {
         final index = entry.key;
         final row = index ~/ 30;
@@ -529,4 +577,12 @@ class Block {
   String? name;
 
   Block({required this.color, this.name});
+}
+
+Color hexStringToColor(String hexColor) {
+  hexColor = hexColor.toUpperCase().replaceAll("#", "");
+  if (hexColor.length == 6) {
+    hexColor = "FF$hexColor";
+  }
+  return Color(int.parse(hexColor, radix: 16));
 }
