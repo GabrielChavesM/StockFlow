@@ -255,6 +255,7 @@ Widget build(BuildContext context) {
                                   Text('Brand: ${product['brand'] ?? 'Unknown'}'),
                                   Text('Category: ${product['category'] ?? 'Unknown'}'),
                                   Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                                  Text('Locations: ${product['productLocations']?.join(', ') ?? 'Unknown'}'),
                                   const Divider(),
                                 ],
                               );
@@ -332,9 +333,10 @@ Widget build(BuildContext context) {
           .get();
       String storeNumber = userDoc['storeNumber'] ?? 'Unknown';
 
+      // Query products where the location is in the productLocations array
       final querySnapshot = await FirebaseFirestore.instance
           .collection('products')
-          .where('productLocation', isEqualTo: location)
+          .where('productLocations', arrayContains: location)
           .where('storeNumber', isEqualTo: storeNumber)
           .get();
 
@@ -358,52 +360,50 @@ Widget build(BuildContext context) {
       final product = await _fetchProductById(productId);
 
       if (product != null) {
-        final productLocation = product['productLocation'];
+        final productLocations = List<String>.from(product['productLocations'] ?? []);
 
-        final blockIndex =
-            _matrix.indexWhere((block) => block.name == productLocation);
+        setState(() {
+          _resetBlockColors(); // Reset all block colors
 
-        if (blockIndex != -1) {
-          setState(() {
-            for (var block in _matrix) {
-              block.color = block.name == null ? Colors.white30 : Colors.brown;
+          // Highlight blocks corresponding to the product's locations
+          for (var location in productLocations) {
+            for (int i = 0; i < _matrix.length; i++) {
+              if (_matrix[i].name == location) {
+                _matrix[i].color = Colors.yellow;
+              }
             }
-            _matrix[blockIndex].color = Colors.yellow;
-          });
+          }
+        });
 
-          showCupertinoDialog(
-            context: context,
-            builder: (context) {
-              return CupertinoAlertDialog(
-                title: const Text('Product Found'),
-                content: Column(
-                  children: [
-                    Text('Name: ${product['name'] ?? 'Unknown'}'),
-                    Text('Brand: ${product['brand'] ?? 'Unknown'}'),
-                    Text('Category: ${product['category'] ?? 'Unknown'}'),
-                    Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
-                    Text('Location: ${product['productLocation'] ?? 'Unknown'}'),
-                  ],
-                ),
-                actions: [
-                  CupertinoDialogAction(
-                    child: const Text('Close'),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                  ),
+        showCupertinoDialog(
+          context: context,
+          builder: (context) {
+            return CupertinoAlertDialog(
+              title: const Text('Product Found'),
+              content: Column(
+                children: [
+                  Text('Name: ${product['name'] ?? 'Unknown'}'),
+                  Text('Brand: ${product['brand'] ?? 'Unknown'}'),
+                  Text('Category: ${product['category'] ?? 'Unknown'}'),
+                  Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                  Text('Locations: ${productLocations.join(', ')}'),
                 ],
-              );
-            },
-          );
-        } else {
-          _showSnackBar('No block found for this product location.');
-        }
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('Close'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            );
+          },
+        );
       } else {
         _showSnackBar('No product found for this Product ID.');
       }
     } catch (e) {
-      if (kDebugMode) print('Error searching for product: $e');
       _showSnackBar('Error searching for product: $e');
     }
   }
@@ -568,6 +568,12 @@ Widget build(BuildContext context) {
       _showSnackBar('Map loaded successfully!');
     } catch (e) {
       _showSnackBar('Error loading map: $e');
+    }
+  }
+
+  void _resetBlockColors() {
+    for (var block in _matrix) {
+      block.color = block.name == null ? Colors.white30 : Colors.brown;
     }
   }
 }

@@ -10,7 +10,6 @@ import '../components/product_cards.dart';
 import '../data/locations_data.dart';
 import '../domain/locations_domain.dart';
 
-// Presentation Layer
 class LocationsPage extends StatefulWidget {
   const LocationsPage({super.key});
 
@@ -26,92 +25,169 @@ class _LocationsPageState extends State<LocationsPage> {
   final TextEditingController _productIdController = TextEditingController();
 
   bool _isProductIdVisible = false;
-  bool _isLoadingCards = true; // Add loading state for product cards
+  bool _isLoadingCards = true;
 
   List<DocumentSnapshot> _allProducts = [];
   String _storeNumber = '';
+  String _adminPermission = '';
   final ProductService _productService = ProductService(ProductRepository());
 
   @override
   void initState() {
     super.initState();
-    _simulateCardLoading(); // Simulate loading for product cards
+    _simulateCardLoading();
     _fetchUserStoreNumber();
   }
 
   Future<void> _simulateCardLoading() async {
     await Future.delayed(const Duration(milliseconds: 500));
     setState(() {
-      _isLoadingCards = false; // Stop loading after the delay
+      _isLoadingCards = false;
     });
   }
 
-  // Função para buscar o número da loja do utilizador logado
   Future<void> _fetchUserStoreNumber() async {
     User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      DocumentSnapshot userDoc =
-          await _productService.getUserDocument(user.uid);
+      DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
       if (userDoc.exists) {
         setState(() {
           _storeNumber = userDoc['storeNumber'] ?? '';
+          _adminPermission = userDoc['adminPermission'] ?? '';
           _storeNumberController.text = _storeNumber;
         });
       }
     }
   }
 
-  // Função de filtragem dos produtos
   List<DocumentSnapshot> _applyFilters(List<DocumentSnapshot> products) {
     final name = _nameController.text.toLowerCase();
     final brand = _brandController.text.toLowerCase();
     final category = _categoryController.text.toLowerCase();
     final storeNumber = _storeNumber.toLowerCase();
-    final productId = _productIdController.text.trim(); // Get the productId
+    final productId = _productIdController.text.trim();
 
     return products
         .where((product) {
           final data = product.data() as Map<String, dynamic>;
-
           final productName = (data['name'] ?? "").toString().toLowerCase();
           final productBrand = (data['brand'] ?? "").toString().toLowerCase();
-          final productCategory =
-              (data['category'] ?? "").toString().toLowerCase();
-          final productStoreNumber =
-              (data['storeNumber'] ?? "").toString().toLowerCase();
+          final productCategory = (data['category'] ?? "").toString().toLowerCase();
+          final productStoreNumber = (data['storeNumber'] ?? "").toString().toLowerCase();
           final currentProductId = product.id;
 
-          if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) {
-            return false;
-          }
-
-          if (productId.isNotEmpty && currentProductId != productId) {
-            return false; // Filter by productId if provided
-          }
+          if (storeNumber.isNotEmpty && productStoreNumber != storeNumber) return false;
+          if (productId.isNotEmpty && currentProductId != productId) return false;
 
           return productName.contains(name) &&
               productBrand.contains(brand) &&
               productCategory.contains(category);
         })
-        .toList()
         .take(5)
         .toList();
   }
 
   void _onBarcodeScanned(String productId) {
     setState(() {
-      _productIdController.text = productId; // Set the scanned productId
+      _productIdController.text = productId;
       _isProductIdVisible = true;
     });
   }
 
   void _onMapIconPressed() {
-    // Example: Navigate to a map page
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => MapPage(), // Replace with your map page widget
-      ),
+      MaterialPageRoute(builder: (context) => MapPage()),
+    );
+  }
+
+  void _showEditLocationDialog(BuildContext context, List<String> locations, String documentId) async {
+    final TextEditingController locationController = TextEditingController();
+
+    showCupertinoDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return CupertinoAlertDialog(
+              title: const Text("Edit Product Locations"),
+              content: Column(
+                children: [
+                  const Text(
+                    "Manage locations for this product:",
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  CupertinoTextField(
+                    controller: locationController,
+                    placeholder: "Add a new location",
+                    padding: const EdgeInsets.all(12),
+                  ),
+                  const SizedBox(height: 12),
+                  if (locations.isNotEmpty)
+                    SizedBox(
+                      height: 150,
+                      child: ListView.builder(
+                        itemCount: locations.length,
+                        itemBuilder: (context, index) {
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(locations[index]),
+                              CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                child: const Icon(CupertinoIcons.delete, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    locations.removeAt(index);
+                                  });
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                CupertinoDialogAction(
+                  isDestructiveAction: true,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                CupertinoDialogAction(
+                  child: const Text('Add Location'),
+                  onPressed: () {
+                    if (locationController.text.isNotEmpty) {
+                      setState(() {
+                        locations.add(locationController.text.trim());
+                        locationController.clear();
+                      });
+                    }
+                  },
+                ),
+                CupertinoDialogAction(
+                  isDefaultAction: true,
+                  onPressed: () async {
+                    try {
+                      await updateProductLocations(documentId, locations);
+                      setState(() {});
+                      Navigator.of(context).pop();
+                    } catch (e) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error while saving locations: $e')),
+                      );
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -120,17 +196,15 @@ class _LocationsPageState extends State<LocationsPage> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Locate Stock', style: TextStyle(color: Colors.white)),
+        title: const Text('Locate Stock', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.grey),
+        iconTheme: const IconThemeData(color: Colors.grey),
         actions: [
           IconButton(
-            padding: const EdgeInsets.only(right: 6.0), // Adjust the padding to move the icon left
-            icon: Icon(Icons.map, color: Colors.white), // Add map icon
-            onPressed: () {
-              _onMapIconPressed(); // Call the map icon handler
-            },
+            padding: const EdgeInsets.only(right: 12.0),
+            icon: const Icon(Icons.map, color: Colors.white),
+            onPressed: _onMapIconPressed,
           ),
         ],
       ),
@@ -157,14 +231,13 @@ class _LocationsPageState extends State<LocationsPage> {
                 brandController: _brandController,
                 categoryController: _categoryController,
                 storeNumberController: _storeNumberController,
-                onProductIdScanned: _onBarcodeScanned, // Pass the callback
+                onProductIdScanned: _onBarcodeScanned,
                 onChanged: () => setState(() {}),
               ),
             ),
             if (_isProductIdVisible)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                 child: TextField(
                   controller: _productIdController,
                   style: const TextStyle(color: Colors.white),
@@ -192,32 +265,27 @@ class _LocationsPageState extends State<LocationsPage> {
               ),
             Expanded(
               child: _isLoadingCards
-                  ? Center(
-                      child:
-                          CircularProgressIndicator()) // Show loading indicator
+                  ? const Center(child: CircularProgressIndicator())
                   : StreamBuilder<QuerySnapshot>(
                       stream: _productService.getProductsStream(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
                         }
 
                         if (snapshot.hasError) {
-                          return Center(
-                              child: Text('Erro ao carregar os produtos.'));
+                          return const Center(child: Text('Error loading products.'));
                         }
 
                         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                          return Center(
-                              child: Text('Nenhum produto encontrado.'));
+                          return const Center(child: Text('No products found.'));
                         }
 
                         _allProducts = snapshot.data!.docs;
                         final filteredProducts = _applyFilters(_allProducts);
 
                         return ListView.builder(
-                          padding: EdgeInsets.symmetric(vertical: 0),
+                          padding: const EdgeInsets.symmetric(vertical: 0),
                           itemCount: filteredProducts.length,
                           itemBuilder: (context, index) {
                             final product = filteredProducts[index];
@@ -225,8 +293,7 @@ class _LocationsPageState extends State<LocationsPage> {
                             final documentId = product.id;
 
                             return Card(
-                              margin: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
+                              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                               child: ListTile(
                                 leading: Container(
                                   margin: const EdgeInsets.all(4.0),
@@ -238,58 +305,67 @@ class _LocationsPageState extends State<LocationsPage> {
                                   ),
                                 ),
                                 title: Text(
-                                  data['name'] ?? "Sem nome",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                  data['name'] ?? "No name",
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                        "Brand: ${data['brand'] ?? "Sem marca"}"),
-                                    Text(
-                                        "Model: ${data['model'] ?? "Sem modelo"}"),
+                                    Text("Brand: ${data['brand'] ?? "No brand"}"),
+                                    Text("Model: ${data['model'] ?? "No model"}"),
                                     RichText(
                                       text: TextSpan(
-                                        style:
-                                            DefaultTextStyle.of(context).style,
+                                        style: DefaultTextStyle.of(context).style,
                                         children: [
-                                          TextSpan(
+                                          const TextSpan(
                                             text: "Current Stock: ",
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
+                                            style: TextStyle(fontWeight: FontWeight.bold),
                                           ),
                                           TextSpan(
-                                            text: data['stockCurrent']
-                                                    ?.toString() ??
-                                                "No stock.",
+                                            text: data['stockCurrent']?.toString() ?? "No stock.",
                                           ),
                                         ],
                                       ),
                                     ),
                                     RichText(
                                       text: TextSpan(
-                                        style:
-                                            DefaultTextStyle.of(context).style,
+                                        style: DefaultTextStyle.of(context).style,
                                         children: [
                                           TextSpan(
-                                            text: "Shop Location: ",
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold),
+                                            text: (data['productLocations'] as List<dynamic>?)?.length == 1
+                                                ? "Shop Location: "
+                                                : "Shop Locations: ",
+                                            style: const TextStyle(fontWeight: FontWeight.bold),
                                           ),
                                           TextSpan(
-                                            text: data['productLocation'] ??
-                                                "Not located.",
+                                            text: (data['productLocations'] as List<dynamic>?)?.join(', ') ?? "Not located.",
                                           ),
                                         ],
                                       ),
                                     ),
                                   ],
                                 ),
-                                onTap: () {
-                                  final locationController =
-                                      TextEditingController();
-                                  _showEditLocationDialog(
-                                      context, locationController, documentId);
+                                onTap: () async {
+                                  User? user = FirebaseAuth.instance.currentUser;
+                                  if (user != null) {
+                                    DocumentSnapshot userDoc = await _productService.getUserDocument(user.uid);
+                                    if (userDoc.exists) {
+                                      String adminPermission = userDoc['adminPermission'] ?? '';
+
+                                      String productStoreNumber = data['storeNumber'] ?? '';
+                                      if (adminPermission != productStoreNumber) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('You do not have permission to edit this location.'),
+                                          ),
+                                        );
+                                        return;
+                                      }
+                                    }
+                                  }
+
+                                  final locations = List<String>.from(data['productLocations'] ?? []);
+                                  _showEditLocationDialog(context, locations, documentId);
                                 },
                               ),
                             );
@@ -303,96 +379,12 @@ class _LocationsPageState extends State<LocationsPage> {
       ),
     );
   }
+}
 
-  // Função para mostrar o diálogo de detalhes do produto
-  void _showEditLocationDialog(BuildContext context,
-      TextEditingController locationController, String documentId) async {
-    // Fetch the current product
-    final product = _allProducts.firstWhere(
-      (product) => product.id == documentId,
-      orElse: () => throw Exception(
-          'No matching product found'), // Throw an exception if no product is found
-    );
-
-    final data = product.data() as Map<String, dynamic>;
-    final productStoreNumber = data['storeNumber'] ?? '';
-
-    // Fetch the current user's adminPermission
-    User? user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      DocumentSnapshot userDoc =
-          await _productService.getUserDocument(user.uid);
-      if (userDoc.exists) {
-        String adminPermission = userDoc['adminPermission'] ?? '';
-
-        // Check if the user is an admin for this product's store
-        if (adminPermission != productStoreNumber) {
-          // Show a message and prevent editing
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content:
-                    Text('You do not have permission to edit this location.')),
-          );
-          return;
-        }
-      }
-    }
-
-    // If the user is an admin, allow editing
-    locationController.text = data['productLocation'] ?? "Not located.";
-
-    showCupertinoDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return CupertinoAlertDialog(
-          title: Text("Edit Store Location"),
-          content: Column(
-            children: [
-              Text(
-                "Change location for ${data['name'] ?? "Sem nome"}",
-                style: TextStyle(fontSize: 18),
-              ),
-              SizedBox(height: 12),
-              CupertinoTextField(
-                controller: locationController,
-                placeholder: "Product Location",
-                padding: EdgeInsets.all(12),
-              ),
-            ],
-          ),
-          actions: [
-            CupertinoDialogAction(
-              isDestructiveAction: true,
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
-            ),
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () async {
-                String locationText = locationController.text.isEmpty
-                    ? "Not located."
-                    : locationController.text;
-
-                try {
-                  await _productService.updateProductLocation(
-                      documentId, locationText);
-                  setState(
-                      () {}); // Refresh the UI to reflect the updated location
-                  Navigator.of(context).pop();
-                } catch (e) {
-                  Navigator.of(context).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error while saving location: $e')),
-                  );
-                }
-              },
-              child: Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+Future<void> updateProductLocations(String documentId, List<String> locations) async {
+  await FirebaseFirestore.instance.collection('products').doc(documentId).update({
+    'productLocations': locations,
+  });
 }
 
 Color hexStringToColor(String hex) {
