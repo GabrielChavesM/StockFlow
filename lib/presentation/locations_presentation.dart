@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:stockflow/components/filter_form.dart';
-import 'package:stockflow/presentation/map_page.dart';
+import 'package:stockflow/components/map_page.dart';
 import '../components/product_cards.dart';
 import '../data/locations_data.dart';
 import '../domain/locations_domain.dart';
@@ -29,7 +29,6 @@ class _LocationsPageState extends State<LocationsPage> {
 
   List<DocumentSnapshot> _allProducts = [];
   String _storeNumber = '';
-  String _adminPermission = '';
   final ProductService _productService = ProductService(ProductRepository());
 
   @override
@@ -53,7 +52,6 @@ class _LocationsPageState extends State<LocationsPage> {
       if (userDoc.exists) {
         setState(() {
           _storeNumber = userDoc['storeNumber'] ?? '';
-          _adminPermission = userDoc['adminPermission'] ?? '';
           _storeNumberController.text = _storeNumber;
         });
       }
@@ -382,6 +380,12 @@ class _LocationsPageState extends State<LocationsPage> {
 }
 
 Future<void> updateProductLocations(String documentId, List<String> locations) async {
+  // Check if the locations list is empty
+  if (locations.isEmpty) {
+    locations.add("Not located"); // Set "Not located" as the default value
+  }
+
+  // Update the productLocations field in Firestore
   await FirebaseFirestore.instance.collection('products').doc(documentId).update({
     'productLocations': locations,
   });

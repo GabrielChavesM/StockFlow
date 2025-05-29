@@ -3,7 +3,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:stockflow/presentation/chat_page.dart';
+import 'package:stockflow/components/chat_page.dart';
 import '../domain/notifications_domain.dart';
 import '../data/notifications_data.dart';
 

@@ -139,7 +139,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
     }
 
     // If the user is an admin, allow editing
-    locationController.text = data['warehouseLocation'] ?? "Not located.";
+    locationController.text = data['warehouseLocation'] ?? "Not located";
 
     showCupertinoDialog(
       context: context,
@@ -170,7 +170,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
               isDefaultAction: true,
               onPressed: () async {
                 String locationText = locationController.text.isEmpty
-                    ? "Not located."
+                    ? "Not located"
                     : locationController.text;
 
                 try {
@@ -349,7 +349,7 @@ class _WarehouseFilteredPageState extends State<WarehouseFilteredPage> {
                                           ),
                                           TextSpan(
                                             text: data['warehouseLocation'] ??
-                                                "Not located.",
+                                                "Not located",
                                           ),
                                         ],
                                       ),

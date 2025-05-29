@@ -1,5 +1,3 @@
-// ignore_for_file: unused_element, unnecessary_cast, unused_field, use_key_in_widget_constructors, library_private_types_in_public_api, sort_child_properties_last, no_leading_underscores_for_local_identifiers, deprecated_member_use
-
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
@@ -9,6 +7,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:io';
+
+import 'package:stockflow/components/barcode_camera.dart';
 
 class MapPage extends StatefulWidget {
   @override
@@ -135,7 +135,7 @@ Widget build(BuildContext context) {
           ),
         ),
       ),
-    ),
+    )
   );
 }
 
@@ -193,18 +193,21 @@ Widget build(BuildContext context) {
   void _handleMoveMode(int index, Block block) {
     if (_selectedBlockIndex != null && _selectedBlockIndex != index) {
       if (block.name == null) {
+        // Temporarily store the move operation
         setState(() {
-          // Move the block to the new index
           _matrix[index] = Block(
             color: _matrix[_selectedBlockIndex!].color,
             name: _matrix[_selectedBlockIndex!].name,
+            productQuantities: Map<String, int>.from(_matrix[_selectedBlockIndex!].productQuantities),
           );
-          // Reset the old block
+          // Reset the old block temporarily
           _matrix[_selectedBlockIndex!] = Block(color: Colors.white30, name: null);
           _isMoveMode = false; // Exit move mode
           _selectedBlockIndex = null; // Clear the selected block
         });
-        _showSnackBar('Block moved successfully!');
+
+        _showSnackBar('Block moved successfully! Remember to save the map.');
+
       } else {
         _showSnackBar('Cannot move block to an occupied space.');
       }
@@ -230,12 +233,29 @@ Widget build(BuildContext context) {
               title: const Text('Configure Block'),
               content: SizedBox(
                 width: MediaQuery.of(context).size.width * 0.8,
-                height: MediaQuery.of(context).size.height * 0.5,
+                height: MediaQuery.of(context).size.height * 0.6,
                 child: Column(
                   children: [
-                    CupertinoTextField(
-                      controller: _nameController,
-                      placeholder: 'Enter block name',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: CupertinoTextField(
+                            controller: _nameController,
+                            placeholder: 'Enter block name',
+                            onChanged: (value) {
+                              setState(() {
+                                block.name = value; // Update block name in real-time
+                              });
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(CupertinoIcons.camera, color: Colors.blue),
+                          onPressed: () async {
+                            await _scanBarcodeForBlock(block);
+                          },
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16.0),
                     if (products.isNotEmpty) ...[
@@ -246,16 +266,110 @@ Widget build(BuildContext context) {
                         child: CupertinoScrollbar(
                           child: ListView.builder(
                             itemCount: products.length,
-                            itemBuilder: (context, index) {
-                              final product = products[index];
+                            itemBuilder: (context, productIndex) {
+                              final product = products[productIndex];
+                              final productId = product['productId'];
+                              final stockCurrent = product['stockCurrent'] ?? 0;
+
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('Name: ${product['name'] ?? 'Unknown'}'),
                                   Text('Brand: ${product['brand'] ?? 'Unknown'}'),
                                   Text('Category: ${product['category'] ?? 'Unknown'}'),
-                                  Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                                  Text('Store Stock: $stockCurrent'),
                                   Text('Locations: ${product['productLocations']?.join(', ') ?? 'Unknown'}'),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(CupertinoIcons.minus, color: CupertinoColors.activeBlue),
+                                        onPressed: () {
+                                          setState(() {
+                                            final currentQuantity = block.productQuantities[productId] ?? 0;
+
+                                            if (currentQuantity > 0) {
+                                              // Decrease the quantity
+                                              block.productQuantities[productId] = currentQuantity - 1;
+                                            } else {
+                                              // Show confirmation pop-up to remove the product
+                                              showCupertinoDialog(
+                                                context: context,
+                                                builder: (context) {
+                                                  return CupertinoAlertDialog(
+                                                    title: const Text('Remove Product'),
+                                                    content: const Text(
+                                                        'The quantity is already 0. Do you want to remove this product from the block?'),
+                                                    actions: [
+                                                      CupertinoDialogAction(
+                                                        child: const Text('Yes'),
+                                                        onPressed: () async {
+                                                          // Remove the product from the block
+                                                          setState(() {
+                                                            block.productQuantities.remove(productId);
+                                                          });
+
+                                                          // Remove the block name from the product's locations in Firestore
+                                                          final updatedLocations =
+                                                              List<String>.from(product['productLocations'] ?? []);
+                                                          updatedLocations.remove(block.name);
+
+                                                          if (updatedLocations.isEmpty) {
+                                                            updatedLocations.add("Not located"); // Set "Not located" when no locations remain
+                                                          }
+
+                                                          await FirebaseFirestore.instance
+                                                              .collection('products')
+                                                              .doc(productId)
+                                                              .update({'productLocations': updatedLocations});
+
+                                                          Navigator.of(context).pop(); // Close the confirmation dialog
+                                                          Navigator.of(context).pop(); // Close the block configuration dialog
+                                                          _showPopup('Success', 'Product removed from block successfully!');
+                                                        },
+                                                      ),
+                                                      CupertinoDialogAction(
+                                                        child: const Text('No'),
+                                                        onPressed: () {
+                                                          Navigator.of(context).pop(); // Close the confirmation dialog
+                                                        },
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          });
+                                        },
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          'Quantity: ${block.productQuantities[productId] ?? 0}',
+                                          style: const TextStyle(fontSize: 16.0),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(CupertinoIcons.plus, color: CupertinoColors.activeBlue),
+                                        onPressed: () {
+                                          setState(() {
+                                            final currentQuantity = block.productQuantities[productId] ?? 0;
+
+                                            // Calculate the total quantity of this product across all blocks
+                                            final totalQuantity = _matrix.fold<int>(
+                                              0,
+                                              (sum, b) => sum + (b.productQuantities[productId] ?? 0),
+                                            );
+
+                                            // Validate if adding the new quantity exceeds stockCurrent
+                                            if (totalQuantity < stockCurrent) {
+                                              block.productQuantities[productId] = currentQuantity + 1;
+                                            } else {
+                                              _showPopup('Error', 'Total quantity exceeds available stock!');
+                                            }
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                   const Divider(),
                                 ],
                               );
@@ -277,7 +391,7 @@ Widget build(BuildContext context) {
                       _selectedBlockIndex = index; // Set the selected block
                     });
                     Navigator.of(context).pop(); // Close the dialog
-                    _showSnackBar('Select an empty space to move the block.');
+                    _showPopup('Select an empty space to move the block.', 'Move Mode Enabled');
                   },
                 ),
                 CupertinoDialogAction(
@@ -287,6 +401,7 @@ Widget build(BuildContext context) {
                     setState(() {
                       block.name = null;
                       block.color = Colors.white30;
+                      block.productQuantities.clear(); // Clear product quantities
                     });
                     Navigator.of(context).pop(); // Close the dialog
                   },
@@ -385,7 +500,7 @@ Widget build(BuildContext context) {
                   Text('Name: ${product['name'] ?? 'Unknown'}'),
                   Text('Brand: ${product['brand'] ?? 'Unknown'}'),
                   Text('Category: ${product['category'] ?? 'Unknown'}'),
-                  Text('Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
+                  Text('Store Stock: ${product['stockCurrent'] ?? 'Unknown'}'),
                   Text('Locations: ${productLocations.join(', ')}'),
                 ],
               ),
@@ -487,6 +602,141 @@ Widget build(BuildContext context) {
     }
   }
 
+  Future<void> _scanBarcodeForBlock(Block block) async {
+    try {
+      final String? barcode = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BarcodeScannerWidget(
+            onBarcodeScanned: (productId) {
+              Navigator.of(context).pop(productId); // Return the scanned product ID
+            },
+          ),
+        ),
+      );
+
+      if (barcode == null) {
+        _showPopup('Error', 'No barcode scanned.');
+        return;
+      }
+
+      // Fetch product details
+      final product = await _fetchProductById(barcode);
+
+      if (product != null) {
+        final stockCurrent = product['stockCurrent'] ?? 0;
+        final productLocations = List<String>.from(product['productLocations'] ?? []);
+
+        // Check if the block's name is part of the product's locations
+        if (!productLocations.contains(block.name)) {
+          // Open the "Add Product to Block" dialog
+          await showCupertinoDialog(
+            context: context,
+            builder: (context) {
+              return CupertinoAlertDialog(
+                title: const Text('Add Product to Block'),
+                content: Column(
+                  children: [
+                    Text('Product: ${product['name'] ?? 'Unknown'}'),
+                    Text('Current Locations: ${productLocations.join(', ')}'),
+                    Text('Block Name: ${block.name ?? 'Unnamed Block'}'),
+                    const Text('Do you want to add this product to this block?'),
+                  ],
+                ),
+                actions: [
+                  CupertinoDialogAction(
+                    child: const Text('Add'),
+                    onPressed: () async {
+                      // Update product locations in Firestore
+                      productLocations.add(block.name!);
+                      await FirebaseFirestore.instance
+                          .collection('products')
+                          .doc(barcode)
+                          .update({'productLocations': productLocations});
+
+                      // Update the block state in real-time
+                      setState(() {
+                        block.productQuantities[barcode] = 0; // Initialize quantity
+                      });
+
+                      Navigator.of(context).pop(); // Close the "Add Product" dialog
+                    },
+                  ),
+                  CupertinoDialogAction(
+                    child: const Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the "Add Product" dialog
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          // Calculate the total quantity of this product across all blocks
+          final totalQuantity = _matrix.fold<int>(
+            0,
+            (sum, b) => sum + (b.productQuantities[barcode] ?? 0),
+          );
+
+          // Open the "Add Quantity" dialog
+          await showCupertinoDialog(
+            context: context,
+            builder: (context) {
+              final quantityController = TextEditingController();
+              return CupertinoAlertDialog(
+                title: Text('Add Product'),
+                content: Column(
+                  children: [
+                    Text('Product: ${product['name'] ?? 'Unknown'}'),
+                    Text('Stock Available: $stockCurrent'),
+                    CupertinoTextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      placeholder: 'Enter quantity to add',
+                    ),
+                  ],
+                ),
+                actions: [
+                  CupertinoDialogAction(
+                    child: const Text('Add'),
+                    onPressed: () {
+                      final newQuantity = int.tryParse(quantityController.text) ?? 0;
+
+                      // Validate if adding the new quantity exceeds stockCurrent
+                      if (totalQuantity + newQuantity > stockCurrent) {
+                        _showPopup('Error', 'Total quantity exceeds available stock!');
+                      } else {
+                        setState(() {
+                          block.productQuantities[barcode] =
+                              (block.productQuantities[barcode] ?? 0) + newQuantity;
+                        });
+                      }
+                      Navigator.of(context).pop(); // Close the "Add Quantity" dialog
+                    },
+                  ),
+                  CupertinoDialogAction(
+                    child: const Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the "Add Quantity" dialog
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        }
+
+        // Reopen the block configuration pop-up with updated data
+        await _showBlockConfigurationDialog(_matrix.indexOf(block), block);
+      } else {
+        _showPopup('Error', 'Product not found!');
+      }
+    } catch (e) {
+      _showPopup('Error', 'Error scanning barcode: $e');
+    }
+  }
+
   Future<void> _saveBlocksToFirebase() async {
     try {
       User? user = FirebaseAuth.instance.currentUser;
@@ -514,6 +764,7 @@ Widget build(BuildContext context) {
           'col': col,
           'name': entry.value.name,
           'color': entry.value.color.value,
+          'productQuantities': entry.value.productQuantities, // Save quantities
         };
       }).toList();
 
@@ -522,9 +773,9 @@ Widget build(BuildContext context) {
         'blocks': blocksWithData,
       });
 
-      _showSnackBar('Map saved successfully!');
+      _showPopup('Success', 'Map saved successfully!');
     } catch (e) {
-      _showSnackBar('Error saving map: $e');
+      _showPopup('Error', 'Error saving map: $e');
     }
   }
 
@@ -547,27 +798,33 @@ Widget build(BuildContext context) {
           .get();
 
       if (!mapDoc.exists) {
-        _showSnackBar('No saved map found for this store.');
+        _showPopup('Error', 'No saved map found for this store.');
         return;
       }
 
       final blocks = List<Map<String, dynamic>>.from(mapDoc['blocks'] ?? []);
 
       setState(() {
+        // Reset the matrix to the saved state
+        for (var i = 0; i < _matrix.length; i++) {
+          _matrix[i] = Block(color: Colors.white30, name: null); // Clear all blocks
+        }
+
         for (var blockData in blocks) {
           final row = blockData['row'];
           final col = blockData['col'];
           final index = row * 30 + col;
           _matrix[index] = Block(
-            color: Color(blockData['color']),
+            color: Colors.brown, // Reset all blocks to brown
             name: blockData['name'],
+            productQuantities: Map<String, int>.from(blockData['productQuantities'] ?? {}),
           );
         }
       });
 
-      _showSnackBar('Map loaded successfully!');
+      _showPopup('Success', 'Map loaded successfully!');
     } catch (e) {
-      _showSnackBar('Error loading map: $e');
+      _showPopup('Error', 'Error loading map: $e');
     }
   }
 
@@ -576,13 +833,35 @@ Widget build(BuildContext context) {
       block.color = block.name == null ? Colors.white30 : Colors.brown;
     }
   }
+
+  void _showPopup(String title, String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) {
+        return CupertinoAlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class Block {
   Color color;
   String? name;
+  Map<String, int> productQuantities; // Key: Product ID, Value: Quantity
 
-  Block({required this.color, this.name});
+  Block({required this.color, this.name, Map<String, int>? productQuantities})
+      : productQuantities = productQuantities ?? {};
 }
 
 Color hexStringToColor(String hexColor) {

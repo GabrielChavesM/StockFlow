@@ -1,6 +1,6 @@
 // lib/presentation/stock_presentation.dart
 
-// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: library_private_types_in_public_api, prefer_final_fields
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -30,17 +30,18 @@ class _FilterPageState extends State<FilterPage> {
   bool _isProductIdVisible = false;
 
   RangeValues _priceRange = RangeValues(0, 5000);
+  RangeValues _pendingPriceRange = RangeValues(0, 5000);
   String? _storeNumber;
   bool _showPriceRange = false;
 
   final ProductService _productService = ProductService(ProductRepository());
   bool _isUpdatingRange = false;
-  bool _isUpdatingTextFields = false;
 
   @override
   void initState() {
     super.initState();
     _fetchUserStoreNumber();
+    _pendingPriceRange = _priceRange;
   }
 
   Future<void> _fetchUserStoreNumber() async {
@@ -112,27 +113,16 @@ class _FilterPageState extends State<FilterPage> {
     });
   }
 
-  void _onPriceRangeChanged(RangeValues newRange) {
-    if (_isUpdatingTextFields) return;
-
+  void _applyPriceFilter() {
     setState(() {
-      _isUpdatingRange = true;
+      _priceRange = _pendingPriceRange;
 
-      // Ensure the start value is less than or equal to the end value
-      final clampedStart = newRange.start.clamp(0, newRange.end);
-      final clampedEnd = newRange.end.clamp(clampedStart, 5000);
-
-      // Update the RangeValues
-      _priceRange = RangeValues(clampedStart.toDouble(), clampedEnd.toDouble());
-
-      // Update the text fields
+      // Update the text fields to reflect the applied range
       _minPriceController.text =
-          clampedStart.toStringAsFixed(2).replaceAll('.', ',');
-      _maxPriceController.text = clampedEnd >= 5000
+          _priceRange.start.toStringAsFixed(2).replaceAll('.', ',');
+      _maxPriceController.text = _priceRange.end >= 5000
           ? ''
-          : clampedEnd.toStringAsFixed(2).replaceAll('.', ',');
-
-      _isUpdatingRange = false;
+          : _priceRange.end.toStringAsFixed(2).replaceAll('.', ',');
     });
   }
 
@@ -140,7 +130,6 @@ class _FilterPageState extends State<FilterPage> {
     if (_isUpdatingRange) return;
 
     setState(() {
-      _isUpdatingTextFields = true;
 
       // Parse the min and max values from the text fields
       final min =
@@ -154,9 +143,9 @@ class _FilterPageState extends State<FilterPage> {
       final clampedMax = max.clamp(clampedMin, 5000);
 
       // Update the RangeValues
-      _priceRange = RangeValues(clampedMin.toDouble(), clampedMax.toDouble());
+      _pendingPriceRange =
+          RangeValues(clampedMin.toDouble(), clampedMax.toDouble());
 
-      _isUpdatingTextFields = false;
     });
   }
 
@@ -228,8 +217,11 @@ class _FilterPageState extends State<FilterPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             PriceRangePicker(
-                              range: _priceRange,
-                              onChanged: _onPriceRangeChanged,
+                              pendingRange: _pendingPriceRange,
+                              onSliderChanged: (RangeValues newRange) {
+                                _pendingPriceRange = newRange;
+                              },
+                              onApply: _applyPriceFilter,
                             ),
                             const SizedBox(height: 10),
                             Row(
@@ -337,34 +329,77 @@ class _FilterPageState extends State<FilterPage> {
   }
 }
 
-class PriceRangePicker extends StatelessWidget {
-  final RangeValues range;
-  final Function(RangeValues) onChanged;
+class PriceRangePicker extends StatefulWidget {
+  final RangeValues pendingRange;
+  final Function(RangeValues) onSliderChanged;
+  final VoidCallback onApply;
 
-  const PriceRangePicker(
-      {super.key, required this.range, required this.onChanged});
+  const PriceRangePicker({
+    super.key,
+    required this.pendingRange,
+    required this.onSliderChanged,
+    required this.onApply,
+  });
+
+  @override
+  _PriceRangePickerState createState() => _PriceRangePickerState();
+}
+
+class _PriceRangePickerState extends State<PriceRangePicker> {
+  late RangeValues _currentRange;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRange = widget.pendingRange;
+  }
+
+  @override
+  void didUpdateWidget(covariant PriceRangePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.pendingRange != widget.pendingRange) {
+      _currentRange = widget.pendingRange;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "€${range.start.round()} - ${range.end >= 5000 ? "€5000+" : "€${range.end.round()}"}",
-          style:
-              const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          "€${_currentRange.start.round()} - ${_currentRange.end >= 5000 ? "€5000+" : "€${_currentRange.end.round()}"}",
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         RangeSlider(
           min: 0,
           max: 5000,
           divisions: 100,
           labels: RangeLabels(
-            "€${range.start.round()}",
-            range.end >= 5000 ? "€5000+" : "€${range.end.round()}",
+            "€${_currentRange.start.round()}",
+            _currentRange.end >= 5000 ? "€5000+" : "€${_currentRange.end.round()}",
           ),
-          values: range,
-          onChanged: onChanged,
+          values: _currentRange,
+          onChanged: (newRange) {
+            setState(() => _currentRange = newRange);
+            widget.onSliderChanged(newRange);
+          },
           activeColor: Colors.white,
           inactiveColor: Colors.white54,
+        ),
+        const SizedBox(height: 8), // Add spacing between slider and button
+        Align(
+          alignment: Alignment.center, // Center the button horizontally
+          child: TextButton(
+            onPressed: widget.onApply,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            ),
+            child: const Text("Apply"),
+          ),
         ),
       ],
     );

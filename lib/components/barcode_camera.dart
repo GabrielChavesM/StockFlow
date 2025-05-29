@@ -11,13 +11,13 @@ class BarcodeScannerWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isPopCalled = false; // Flag to prevent multiple pops
+    bool isPopCalled = false; // Prevent multiple pops
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Barcode Scanner'),
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
       ),
       body: MobileScanner(
         controller: MobileScannerController(),
@@ -26,10 +26,9 @@ class BarcodeScannerWidget extends StatelessWidget {
           final String? code = barcode.rawValue;
 
           if (code != null && !isPopCalled) {
-            isPopCalled = true; // Set the flag to true to prevent further pops
-            onBarcodeScanned(
-                code); // Trigger the callback with the scanned barcode
-            Navigator.of(context).pop(); // Close the scanner screen
+            isPopCalled = true; // Prevent further pops
+            onBarcodeScanned(code); // Trigger callback
+            Navigator.of(context).pop(); // Close scanner
           }
         },
       ),
