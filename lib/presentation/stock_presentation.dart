@@ -68,14 +68,8 @@ class _FilterPageState extends State<FilterPage> {
       final productId = _productIdController.text.trim();
 
       double minPrice = _priceRange.start;
-      double maxPrice =
-          _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
+      double maxPrice = _priceRange.end >= 5000 ? double.infinity : _priceRange.end;
 
-      if (_minPriceController.text.isNotEmpty) {
-        minPrice =
-            double.tryParse(_minPriceController.text.replaceAll(',', '.')) ??
-                minPrice;
-      }
 
       if (_maxPriceController.text.isNotEmpty) {
         maxPrice =
@@ -129,25 +123,17 @@ class _FilterPageState extends State<FilterPage> {
   void _onTextFieldChanged() {
     if (_isUpdatingRange) return;
 
-    setState(() {
 
-      // Parse the min and max values from the text fields
-      final min =
-          double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? 0;
-      final max =
-          double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ??
-              5000;
+    final min = double.tryParse(_minPriceController.text.replaceAll(',', '.')) ?? 0;
+    final max = double.tryParse(_maxPriceController.text.replaceAll(',', '.')) ?? 5000;
 
-      // Ensure min is less than or equal to max
-      final clampedMin = min.clamp(0, max);
-      final clampedMax = max.clamp(clampedMin, 5000);
+    final clampedMin = min.clamp(0, max);
+    final clampedMax = max.clamp(clampedMin, 5000);
 
-      // Update the RangeValues
-      _pendingPriceRange =
-          RangeValues(clampedMin.toDouble(), clampedMax.toDouble());
+    _pendingPriceRange = RangeValues(clampedMin.toDouble(), clampedMax.toDouble());
 
-    });
   }
+
 
   void _onBarcodeScanned(String productId) {
     setState(() {

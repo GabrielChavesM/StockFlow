@@ -456,7 +456,7 @@ Widget build(BuildContext context) {
           .get();
 
       return querySnapshot.docs
-          .map((doc) => doc.data() as Map<String, dynamic>)
+          .map((doc) => doc.data())
           .toList();
     } catch (e) {
       if (kDebugMode) print('Error fetching products: $e');
@@ -545,7 +545,7 @@ Widget build(BuildContext context) {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        return querySnapshot.docs.first.data() as Map<String, dynamic>;
+        return querySnapshot.docs.first.data();
       }
     } catch (e) {
       if (kDebugMode) {
