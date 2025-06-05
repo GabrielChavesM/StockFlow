@@ -83,6 +83,7 @@ class _ProductCardsState extends State<ProductCards> {
 
               // Calcula preço antigo e novo
               final double vatPrice = (data['vatPrice'] is num) ? data['vatPrice'].toDouble() : 0.0;
+              final String storeCurrency = data['storeCurrency'] ?? '';
               final double discountPercent = hasDiscount ? data['discountPercent'].toDouble() : 0.0;
               final double discountedPrice = hasDiscount ? vatPrice / (1 - discountPercent / 100) : vatPrice;
 
@@ -183,7 +184,7 @@ class _ProductCardsState extends State<ProductCards> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            "€ ${discountedPrice.toStringAsFixed(2)}",
+                                            "$storeCurrency ${discountedPrice.toStringAsFixed(2)}",
                                             style: const TextStyle(
                                               color: Colors.grey,
                                               fontSize: 14,
@@ -193,7 +194,7 @@ class _ProductCardsState extends State<ProductCards> {
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            "€ ${vatPrice.toStringAsFixed(2)}",
+                                            "$storeCurrency ${vatPrice.toStringAsFixed(2)}",
                                             style: const TextStyle(
                                               color: Colors.redAccent,
                                               fontWeight: FontWeight.bold,
@@ -203,7 +204,7 @@ class _ProductCardsState extends State<ProductCards> {
                                         ],
                                       )
                                     : Text(
-                                        "€ ${vatPrice.toStringAsFixed(2)}",
+                                        "$storeCurrency ${vatPrice.toStringAsFixed(2)}",
                                         style: const TextStyle(
                                           color: Colors.green,
                                           fontWeight: FontWeight.bold,

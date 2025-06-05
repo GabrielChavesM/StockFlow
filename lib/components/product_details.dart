@@ -9,7 +9,7 @@ void showProductDetailsDialog(BuildContext context, Map<String, dynamic> data) {
     "Category": data['category'] ?? "Without category",
     "Subcategory": data['subCategory'] ?? "Without subcategory",
     "Description": data['description'] ?? "Without description",
-    "Sale Price": "€ ${data['vatPrice']?.toStringAsFixed(2) ?? "0.00"}",
+    "Sale Price": "${data['storeCurrency']} ${data['vatPrice']?.toStringAsFixed(2) ?? "0.00"}",
     "Current Stock": "${data['stockCurrent'] ?? 0}",
     "Stock Order": "${data['stockOrder'] ?? 0}",
   };

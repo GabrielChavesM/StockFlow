@@ -354,7 +354,7 @@ class _PriceRangePickerState extends State<PriceRangePicker> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "€${_currentRange.start.round()} - ${_currentRange.end >= 5000 ? "€5000+" : "€${_currentRange.end.round()}"}",
+          "${_currentRange.start.round()} - ${_currentRange.end >= 5000 ? "5000+" : "${_currentRange.end.round()}"}",
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         RangeSlider(
@@ -362,8 +362,8 @@ class _PriceRangePickerState extends State<PriceRangePicker> {
           max: 5000,
           divisions: 100,
           labels: RangeLabels(
-            "€${_currentRange.start.round()}",
-            _currentRange.end >= 5000 ? "€5000+" : "€${_currentRange.end.round()}",
+            "${_currentRange.start.round()}",
+            _currentRange.end >= 5000 ? "5000+" : "${_currentRange.end.round()}",
           ),
           values: _currentRange,
           onChanged: (newRange) {
