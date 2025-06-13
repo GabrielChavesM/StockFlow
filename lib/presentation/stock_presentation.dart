@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:stockflow/components/ai_page.dart';
 import 'package:stockflow/components/decimal_input.dart';
 import 'package:stockflow/components/filter_form.dart';
 import '../components/product_cards.dart';
@@ -152,6 +153,26 @@ class _FilterPageState extends State<FilterPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.grey),
+        actions: [
+          IconButton(
+            padding: const EdgeInsets.only(right: 8.0), // Adjust the padding to move the icon left
+            icon: Icon(Icons.smart_toy_outlined, color: Colors.white),
+onPressed: () async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => AIChatPage()),
+  );
+
+  if (result != null && result is String) {
+    setState(() {
+      _nameController.text = result;
+    });
+  }
+},
+
+            tooltip: 'AI Assistant',
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
