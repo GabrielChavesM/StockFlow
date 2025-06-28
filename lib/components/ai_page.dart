@@ -156,18 +156,26 @@ class _AIChatPageState extends State<AIChatPage> {
       return;
     }
 
-    // Pega nomes únicos dos produtos disponíveis na loja
+    // Filter products based on relevance to the user's input
     final nomesProdutos = produtosCache
         .map((p) => p['name']?.toString().trim())
         .where((nome) => nome != null && nome.isNotEmpty)
         .toSet()
         .toList();
 
+    final filteredProdutos = nomesProdutos.where((nome) {
+      final lowerNome = nome!.toLowerCase();
+      return lowerNome.contains(_produtoController.text.toLowerCase()) ||
+           lowerNome.contains(_marcaController.text.toLowerCase()) ||
+           lowerNome.contains(_lifestyleController.text.toLowerCase());
+    }).toList();
+
+    // Use filtered products in the prompt
     final promptFinal = '''
 Based on the information below, recommend only product names and a brief sentence explaining why this choice is ideal. Be direct and objective. List one recommendation per line, in the format: Product Name: brief explanation.
 
 IMPORTANT: Only choose from this list of products available in store:
-${nomesProdutos.join(', ')}
+${filteredProdutos.join(', ')}
 IMPORTANT: If no products match with the customer's needs or no products with those names are available in store, return an empty list of recommendations, do not reply with anything else.
 
 - Product that the customer has: ${_produtoController.text}
@@ -184,11 +192,8 @@ If the products in the store do not match the customer's needs, return an empty 
 IMPORTANT: DO NOT send any output with the following: "Looking at the available products in the store, Looking at products avaible, Looking at the products in the store, etc ..."
 
 Only the recommendations, in the format: Product Name: brief explanation.
+Do not send duplicated recommendations, only unique products.
 IMPORTANT: DO NOT include any phrases such as "Looking at the available products in the store", "Looking at products available", "Looking at the products in the store" or similar expressions in the response.
-Based on the information below, recommend only product names and a brief sentence explaining why this choice is ideal. Be direct and objective. List one recommendation per line, in the format: Product Name: brief explanation.
-IMPORTANT: If no products match with the customer's needs or no products with those names are available in store, return an empty list of recommendations, do not reply with anything else.
-
-VERY IMPORTANT: DO NOT include any phrases such as "Looking at the available products in the store", "Looking at products available", "Looking at the products in the store" or similar expressions in the response.
 
 ONLY return the recommendations, exactly in the format:
 Product Name: brief explanation.
@@ -218,13 +223,17 @@ If the products in the store do not match the customer's needs, return an empty 
       final data = jsonDecode(response.body);
       String resposta = data['choices'][0]['message']['content'] as String;
 
-      resposta = resposta.replaceAll(RegExp(r'<\/?think>'), '');
+      resposta = resposta.replaceAll(RegExp(r'<\/?think>|(Looking at the products available|Considering the products in the store|Looking at products available|Looking at the available products in the store|In the store)'), '');
 
       final linhas = resposta
           .trim()
           .split('\n')
           .map((linha) => linha.trim())
-          .where((linha) => RegExp(r'^[\w\s]{2,}[:\-–]\s+').hasMatch(linha))
+          .where((linha) => RegExp(r'^[\w\s]{2,}[:\-–]\s+').hasMatch(linha)) // Filtra linhas no formato esperado
+          .where((linha) {
+            final titulo = linha.split(RegExp(r'[:\-–]')).first.trim();
+            return filteredProdutos.contains(titulo); // Verifica se o título está em filteredProdutos
+          })
           .toList();
 
       final recomendacoes = linhas.map((linha) {
